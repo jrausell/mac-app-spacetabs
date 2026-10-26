@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+    <key>CFBundleExecutable</key><string>SpaceTabs</string>
+    <key>CFBundleIdentifier</key><string>dev.spacetabs.mac</string>
+    <key>CFBundleName</key><string>SpaceTabs</string>
+    <key>CFBundleDisplayName</key><string>SpaceTabs</string>
+    <key>CFBundleIconFile</key><string>SpaceTabs.icns</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleShortVersionString</key><string>0.9.0</string>
+    <key>CFBundleVersion</key><string>35</string>
+    <key>CFBundleDevelopmentRegion</key><string>en</string>
+    <key>CFBundleLocalizations</key><array><string>en</string><string>es</string></array>
+    <key>LSMinimumSystemVersion</key><string>15.0</string>
+    <key>LSUIElement</key><false/>
+    <key>NSHighResolutionCapable</key><true/>
+    <key>NSMainClass</key><string>NSApplication</string>
+</dict></plist>

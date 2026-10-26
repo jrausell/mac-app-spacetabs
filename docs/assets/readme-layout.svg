@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="660" viewBox="0 0 1200 660" role="img" aria-labelledby="title description">
+  <title id="title">SpaceTabs: independent tab groups on one desktop</title>
+  <desc id="description">Layout illustration with Notes and Finder in zone A, a large editor and browser group in zone B, and Terminal and Messages in zone C. Each zone has its own tabs.</desc>
+  <defs>
+    <linearGradient id="backdrop" x2="1" y2="1">
+      <stop stop-color="#111827"/><stop offset="1" stop-color="#172c40"/>
+    </linearGradient>
+    <linearGradient id="window" x2="0" y2="1">
+      <stop stop-color="#182636"/><stop offset="1" stop-color="#132030"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="660" rx="24" fill="url(#backdrop)"/>
+  <g font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">
+    <text x="48" y="60" fill="#f8fafc" font-size="27" font-weight="700">One desktop. A place for every window.</text>
+    <text x="48" y="90" fill="#b6c8db" font-size="16">Independent tabs · Real app windows · Your layout</text>
+    <g stroke="#33506a" fill="url(#window)">
+      <rect x="48" y="122" width="330" height="216" rx="14"/>
+      <rect x="48" y="352" width="330" height="216" rx="14"/>
+      <rect x="394" y="122" width="758" height="446" rx="14"/>
+    </g>
+    <g fill="#233447">
+      <path d="M63 123h300q14 0 14 14v34H49v-34q0-14 14-14Z"/>
+      <path d="M63 353h300q14 0 14 14v34H49v-34q0-14 14-14Z"/>
+      <path d="M409 123h728q14 0 14 14v34H395v-34q0-14 14-14Z"/>
+    </g>
+    <g font-size="14" font-weight="600">
+      <rect x="60" y="134" width="28" height="26" rx="7" fill="#fbbf24"/>
+      <text x="74" y="152" text-anchor="middle" fill="#172030">A</text>
+      <rect x="98" y="132" width="104" height="30" rx="7" fill="#fbbf24"/>
+      <text x="150" y="152" text-anchor="middle" fill="#172030">Notes</text>
+      <text x="226" y="152" fill="#d7e2ee">Finder</text>
+      <text x="349" y="153" text-anchor="middle" fill="#d7e2ee" font-size="22">+</text>
+      <rect x="60" y="364" width="28" height="26" rx="7" fill="#6ee7b7"/>
+      <text x="74" y="382" text-anchor="middle" fill="#172030">C</text>
+      <rect x="98" y="362" width="104" height="30" rx="7" fill="#6ee7b7"/>
+      <text x="150" y="382" text-anchor="middle" fill="#172030">Terminal</text>
+      <text x="219" y="382" fill="#d7e2ee">Messages</text>
+      <text x="349" y="383" text-anchor="middle" fill="#d7e2ee" font-size="22">+</text>
+      <rect x="406" y="134" width="28" height="26" rx="7" fill="#93c5fd"/>
+      <text x="420" y="152" text-anchor="middle" fill="#172030">B</text>
+      <rect x="444" y="132" width="112" height="30" rx="7" fill="#93c5fd"/>
+      <text x="500" y="152" text-anchor="middle" fill="#172030">Editor</text>
+      <text x="582" y="152" fill="#d7e2ee">Browser</text>
+      <text x="691" y="152" fill="#d7e2ee">Preview</text>
+      <text x="1123" y="153" text-anchor="middle" fill="#d7e2ee" font-size="22">+</text>
+    </g>
+    <text x="72" y="211" fill="#f1f5f9" font-size="20" font-weight="600">A little room to think.</text>
+    <g stroke="#5c7289" stroke-width="7" stroke-linecap="round" opacity=".6">
+      <path d="M76 242h245M76 264h208M76 286h231M76 308h150"/>
+    </g>
+    <g font-family="SFMono-Regular, Consolas, monospace" font-size="16">
+      <text x="74" y="438" fill="#6ee7b7">~/my-next-idea</text>
+      <text x="74" y="467" fill="#d7e2ee">❯ swift build</text>
+      <text x="74" y="496" fill="#93a9bf">Build complete.</text>
+      <text x="74" y="536" fill="#6ee7b7">❯ _</text>
+    </g>
+    <path d="M548 172v395" stroke="#2c4055"/>
+    <g fill="#6b8196" opacity=".7">
+      <rect x="418" y="196" width="102" height="8" rx="4"/>
+      <rect x="430" y="224" width="76" height="7" rx="3"/>
+      <rect x="430" y="248" width="89" height="7" rx="3"/>
+      <rect x="430" y="272" width="64" height="7" rx="3"/>
+      <rect x="430" y="296" width="78" height="7" rx="3"/>
+    </g>
+    <g font-family="SFMono-Regular, Consolas, monospace" font-size="18">
+      <text x="580" y="226" fill="#c4b5fd">let workspace = SpaceTabs()</text>
+      <text x="580" y="262" fill="#9db2c8">// Keep your main work in B.</text>
+      <text x="580" y="298" fill="#93c5fd">workspace.focus(.b)</text>
+    </g>
+    <g stroke="#516a82" stroke-width="8" stroke-linecap="round" opacity=".45">
+      <path d="M584 341h318M608 372h408M608 403h268M584 434h362"/>
+    </g>
+    <rect x="580" y="479" width="314" height="45" rx="10" fill="#213d56"/>
+    <text x="600" y="507" fill="#c1dcf6" font-size="16">More space for the task at hand.</text>
+    <text x="48" y="613" fill="#9db2c8" font-size="14">Layout illustration · A/C on the left · B stays the main zone</text>
+    <text x="1152" y="613" text-anchor="end" fill="#d7e2ee" font-size="18" font-weight="700">SpaceTabs</text>
+  </g>
+</svg>

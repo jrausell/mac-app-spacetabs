@@ -1,0 +1,39 @@
+name: Checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    runs-on: macos-15
+    timeout-minutes: 20
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+      SPACETABS_TEST_LOCAL_LISTENER: "1"
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - name: Toolchain
+        run: |
+          swift --version
+          xcrun swift-format --version
+      - name: Formatting
+        run: Scripts/lint.sh
+      - name: Documentation links
+        run: Scripts/check-docs.py
+      - name: Localization catalogs
+        run: Scripts/check-localizations.py
+      - name: Tests
+        run: Scripts/test.sh
+      - name: Release compilation
+        run: Scripts/build.sh release
