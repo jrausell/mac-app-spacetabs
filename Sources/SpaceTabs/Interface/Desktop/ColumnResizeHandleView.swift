@@ -71,21 +71,26 @@ final class ColumnResizeHandleView: NSView {
         color(model.tabAppearance.accent(for: .a, systemIsDark: dark)).setStroke()
         shape.lineWidth = hovered || drag != nil ? 3 : 2
         shape.stroke()
-        let arrow = NSAttributedString(
-            string: rows ? "↕" : "↔",
-            attributes: [
-                .font: NSFont.systemFont(ofSize: 24, weight: .heavy), .foregroundColor: color(palette.foreground),
-            ])
-        arrow.draw(at: NSPoint(x: (bounds.width - arrow.size().width) / 2, y: 13))
-        let label =
-            drag.map { "\(Int($0.preview * 100)) / \(100 - Int($0.preview * 100))" }
-            ?? (rows ? L10n.tr("HEIGHT") : L10n.tr("WIDTH"))
-        let text = NSAttributedString(
-            string: label,
-            attributes: [
-                .font: NSFont.systemFont(ofSize: 9, weight: .bold), .foregroundColor: color(palette.foreground),
-            ])
-        text.draw(at: NSPoint(x: (bounds.width - text.size().width) / 2, y: 4))
+        NSGraphicsContext.saveGraphicsState()
+        defer { NSGraphicsContext.restoreGraphicsState() }
+        let transform = NSAffineTransform()
+        transform.translateX(by: bounds.midX, yBy: bounds.midY)
+        if rows { transform.rotate(byDegrees: 90) }
+        transform.concat()
+        // Rotate the same stroked arrow so both controls have identical weight.
+        let arrow = NSBezierPath()
+        arrow.move(to: NSPoint(x: -7, y: 0))
+        arrow.line(to: NSPoint(x: 7, y: 0))
+        for direction: CGFloat in [-1, 1] {
+            arrow.move(to: NSPoint(x: direction * 4, y: -3))
+            arrow.line(to: NSPoint(x: direction * 7, y: 0))
+            arrow.line(to: NSPoint(x: direction * 4, y: 3))
+        }
+        arrow.lineWidth = 1
+        arrow.lineCapStyle = .round
+        arrow.lineJoinStyle = .round
+        color(palette.foreground).setStroke()
+        arrow.stroke()
     }
 
     override func mouseDown(with event: NSEvent) {

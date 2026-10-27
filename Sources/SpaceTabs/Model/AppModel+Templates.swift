@@ -42,7 +42,9 @@ extension AppModel {
             self.message =
                 destination == .twoColumns
                 ? L10n.tr("Two columns. Tabs from C are moved into A.")
-                : L10n.tr("Three zones: A above C, with B as the main zone. Drag the HEIGHT handle to adjust the rows.")
+                : L10n.tr(
+                    "Three zones: A above C, with B as the main zone. Drag the vertical arrow handle to adjust the rows."
+                )
         }
         if originals.isEmpty || demo {
             updatePreferences()

@@ -7,20 +7,27 @@ import SpaceTabsCore
     private var connection: SettingsChannel?
     private var sendPacket: ((SettingsPacket) -> Void)?
     private(set) var state: SettingsState?
+    init(model: AppModel) { self.model = model }
     init(model: AppModel, sendPacket: @escaping (SettingsPacket) -> Void) {
         self.model = model
         self.sendPacket = sendPacket
     }
-    init(model: AppModel, path: String) throws {
-        self.model = model
+    func connect(path: String) async throws {
         let managerURL = Bundle.main.bundleURL.deletingLastPathComponent().deletingLastPathComponent()
             .deletingLastPathComponent()
-        let verifier = SettingsPeerVerifier(application: managerURL)
-        connection = try SettingsChannel.connect(
-            path: path, verifier: verifier,
-            packet: { [weak self] packet in
-                DispatchQueue.main.async { self?.receive(packet) }
-            }, disconnected: { _ in Task { @MainActor in NSApp.terminate(nil) } })
+        let channel = try await SettingsTransportSetup.perform { [weak self] in
+            let verifier = SettingsPeerVerifier(application: managerURL)
+            return try SettingsChannel.connect(
+                path: path, verifier: verifier,
+                packet: { [weak self] packet in
+                    DispatchQueue.main.async { self?.receive(packet) }
+                }, disconnected: { _ in Task { @MainActor in NSApp.terminate(nil) } })
+        }
+        guard !Task.isCancelled else {
+            channel.close()
+            throw CancellationError()
+        }
+        connection = channel
         sendPacket = { [weak connection] packet in connection?.send(packet) }
         sendPacket?(SettingsPacket(kind: .subscribe))
     }

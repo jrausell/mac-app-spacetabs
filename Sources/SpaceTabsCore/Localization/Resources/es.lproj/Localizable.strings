@@ -180,7 +180,6 @@
 "Grant Access" = "Conceder acceso";
 "Grant Accessibility access to continue." = "Concede el acceso de Accesibilidad para continuar.";
 "Granted" = "Concedido";
-"HEIGHT" = "ALTO";
 "Have your zones ready when you start your Mac." = "Ten tus zonas listas al iniciar tu Mac.";
 "Hide Others" = "Ocultar otras";
 "Hide Settings" = "Ocultar ajustes";
@@ -398,7 +397,7 @@
 "This Accessibility operation is not supported." = "Esta operación de Accesibilidad no es compatible.";
 "This app cannot {0} the window through Accessibility." = "Esta aplicación no puede {0} la ventana mediante Accesibilidad.";
 "This shortcut is already assigned to another SpaceTabs action." = "Este atajo ya está asignado a otra acción de SpaceTabs.";
-"Three zones: A above C, with B as the main zone. Drag the HEIGHT handle to adjust the rows." = "Tres zonas: A sobre C, con B como zona principal. Arrastra el control ALTO para ajustar las filas.";
+"Three zones: A above C, with B as the main zone. Drag the vertical arrow handle to adjust the rows." = "Tres zonas: A sobre C, con B como zona principal. Arrastra el control de flechas verticales para ajustar las filas.";
 "Try Demo" = "Probar demostración";
 "Two Columns" = "Dos columnas";
 "Two columns. Tabs from C are moved into A." = "Dos columnas. Las pestañas de C se trasladan a A.";
@@ -413,7 +412,6 @@
 "Version {0}" = "Versión {0}";
 "View Details" = "Ver detalles";
 "Visible macOS frame: {0}" = "Marco visible de macOS: {0}";
-"WIDTH" = "ANCHO";
 "Wait for the current operation to finish." = "Espera a que termine la operación actual.";
 "Wait for the desktop transition to finish." = "Espera a que termine la transición de escritorio.";
 "Waiting for approval in macOS System Settings." = "Esperando aprobación en Ajustes del Sistema de macOS.";
@@ -426,7 +424,7 @@
 "Windows still belong to their apps. macOS controls Spaces, native full screen, and floating windows." = "Las ventanas siguen perteneciendo a sus aplicaciones. macOS controla Spaces, la pantalla completa nativa y las ventanas flotantes.";
 "Windows use the full height. Tab bars float above them." = "Las ventanas utilizan toda la altura. Las barras de pestañas flotan sobre ellas.";
 "Workspace Restores" = "Restauraciones del espacio de trabajo";
-"You can also drag the WIDTH and HEIGHT handles when the tab bars are visible. Each column has a minimum width of 20%." = "También puedes arrastrar los controles ANCHO y ALTO cuando las barras estén visibles. Cada columna tiene un ancho mínimo del 20 %.";
+"You can also drag the horizontal and vertical arrow handles when the tab bars are visible. Each column has a minimum width of 20%." = "También puedes arrastrar los controles de flechas horizontales y verticales cuando las barras estén visibles. Cada columna tiene un ancho mínimo del 20 %.";
 "You can browse all apps. Accessibility access is needed to manage windows." = "Puedes explorar todas las aplicaciones. Para gestionar ventanas se necesita acceso de Accesibilidad.";
 "Your first profile" = "Tu primer perfil";
 "Your windows. Your zones. One desktop." = "Tus ventanas. Tus zonas. Un escritorio.";
@@ -489,3 +487,6 @@
 "Loading tabs…" = "Cargando pestañas…";
 "Saved windows unavailable" = "Ventanas guardadas no disponibles";
 "Fixed tab bars stay above app windows." = "Las barras fijas permanecen por encima de las ventanas.";
+"Top {0}% · Bottom {1}%" = "Arriba {0}% · Abajo {1}%";
+"Left {0}% · Right {1}%" = "Izquierda {0}% · Derecha {1}%";
+"Could not resize {0}. The previous layout settings were restored. {1}" = "No se pudo redimensionar {0}. Se han restaurado los ajustes de la distribución anterior. {1}";

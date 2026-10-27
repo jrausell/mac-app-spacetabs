@@ -41,6 +41,8 @@ Record which window was focused, whether it was a native tab inside another app,
 
 Some apps impose a minimum size, use nonstandard AX windows, or have a modal dialog above the window. Try another zone size, close the dialog, and use **Refresh** for an explicit retry.
 
+Columns allow 20–80%. If the preview reaches 20% but returns to its old position after release, check the Settings message for the app that rejected resizing. On a 2560-point desktop, 20% is 512 points; a window whose minimum width is larger cannot fit. Release that window from its zone or choose a wider split. SpaceTabs preserves the previous layout settings instead of accepting a window that spills into another zone. The drag guide shows live left/right or top/bottom percentages while actual windows stay still until release.
+
 AX notification warnings do not by themselves mean global Accessibility access was lost. A temporarily unresponsive app is retried with limits while known windows stay cached. Failed recovery can pause management so original frames remain available for release.
 
 ## SpaceTabs is paused

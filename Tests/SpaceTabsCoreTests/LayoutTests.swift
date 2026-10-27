@@ -187,6 +187,10 @@ import Testing
     #expect(engine.ratioByDragging(initial: 0.3, translation: 10000, visibleWidth: width) == 0.8)
     #expect(engine.ratioByDragging(initial: .nan, translation: 100, visibleWidth: width) == 0.25)
     #expect(engine.ratioByDragging(initial: 0.3, translation: 100, visibleWidth: 0) == 0.25)
+    let twenty = engine.ratioByDragging(initial: 0.25, translation: -128, visibleWidth: 2560)
+    #expect(twenty == 0.2)
+    let zones = engine.geometry(visibleFrame: CGRect(x: 0, y: 0, width: 2560, height: 1440), ratio: twenty)
+    #expect(zones[.a]?.content.width == 512)
 }
 
 @Test func edgeToEdgeWindowsCoverTheUsableDesktopWithoutOuterOrColumnGaps() throws {
@@ -209,7 +213,7 @@ import Testing
     }
 }
 
-@Test func largeColumnHandleHasItsOwnHeaderSpaceWithoutShrinkingWindowAreas() throws {
+@Test func columnHandleHasItsOwnHeaderSpaceWithoutShrinkingWindowAreas() throws {
     let engine = LayoutEngine()
     let visible = CGRect(x: 100, y: 50, width: 1600, height: 900)
     for ratio in [0.15, 0.3, 0.85] {
@@ -220,7 +224,7 @@ import Testing
         let right = try #require(headers.bars[.b])
         let a = try #require(zones[.a])
         let b = try #require(zones[.b])
-        #expect(headers.handle.width == 64 && headers.handle.height == 42)
+        #expect(headers.handle.width == 32 && headers.handle.height == 42)
         #expect(left.maxX + 4 == headers.handle.minX)
         #expect(right.minX - 4 == headers.handle.maxX)
         #expect(!left.intersects(headers.handle) && !right.intersects(headers.handle))

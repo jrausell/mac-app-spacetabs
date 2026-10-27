@@ -261,10 +261,10 @@ final class PanelController {
             let center = model.layoutTemplate == .splitRight ? previewLeft.content.minX : previewLeft.content.maxX
             let frame: CGRect
             if model.resizingRows, let lower = preview[.c] {
-                frame = CGRect(x: lower.bar.minX, y: lower.bar.maxY - 2, width: lower.bar.width, height: 4)
+                frame = CGRect(x: lower.bar.minX, y: lower.bar.maxY - 18, width: lower.bar.width, height: 36)
             } else {
                 frame = CGRect(
-                    x: center - 2, y: model.layoutVisibleFrame(on: screen).minY, width: 4,
+                    x: center - 100, y: model.layoutVisibleFrame(on: screen).minY, width: 200,
                     height: max(0, previewLeft.bar.minY - model.layoutVisibleFrame(on: screen).minY))
             }
             present(guide, frame: frame, visible: true)

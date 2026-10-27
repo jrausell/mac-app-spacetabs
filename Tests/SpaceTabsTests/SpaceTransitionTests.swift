@@ -17,7 +17,8 @@ import Testing
     #expect(model.spaceTransitioning)
     #expect(!model.paused)
     #expect(model.desktopRevision == 1)
-    try await Task.sleep(for: .milliseconds(650))
+    let transition = try #require(model.spaceChangeTask)
+    await transition.value
     #expect(!model.spaceTransitioning && !model.paused)
     #expect(layouts == 2)
     #expect(model.operationTask == nil)
@@ -30,9 +31,12 @@ import Testing
     let model = AppModel()
     model.paused = true
     model.activeSpaceChanged()
+    let first = try #require(model.spaceChangeTask)
     model.activeSpaceChanged()
     #expect(model.spaceChangeCount == 2)
-    try await Task.sleep(for: .milliseconds(650))
+    #expect(first.isCancelled)
+    let transition = try #require(model.spaceChangeTask)
+    await transition.value
     #expect(model.paused)
     #expect(!model.spaceTransitioning)
     #expect(model.desktopRevision == 2)
@@ -41,17 +45,19 @@ import Testing
 @MainActor @Test func realScreenOrPermissionFailureOverridesTemporarySpaceTransition() async throws {
     let model = AppModel()
     model.activeSpaceChanged()
+    let transition = try #require(model.spaceChangeTask)
     model.suspendForDesktopChange("The selected display no longer exists")
-    try await Task.sleep(for: .milliseconds(650))
+    await transition.value
     #expect(model.paused && !model.spaceTransitioning)
     #expect(model.message == "The selected display no longer exists")
 }
 
-@MainActor @Test func spaceNotificationDoesNotEndALongerPhysicalDisplayTransition() async {
+@MainActor @Test func spaceNotificationDoesNotEndALongerPhysicalDisplayTransition() async throws {
     let model = AppModel()
     model.displayProfileTask = Task { try? await Task.sleep(for: .seconds(5)) }
     model.activeSpaceChanged()
-    try? await Task.sleep(for: .milliseconds(700))
+    let transition = try #require(model.spaceChangeTask)
+    await transition.value
     #expect(model.spaceTransitioning && model.managementSuspended)
     #expect(!model.paused)
     model.displayProfileTask?.cancel()

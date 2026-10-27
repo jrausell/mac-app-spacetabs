@@ -22,10 +22,12 @@ public struct WindowAccessError: LocalizedError, Sendable {
 public struct WindowOperationError: LocalizedError, Sendable {
     public let message: String
     public var recoveryStates: [UUID: OriginalWindowState]
+    public let windowID: UUID?
     public var errorDescription: String? { message }
-    public init(message: String, recoveryStates: [UUID: OriginalWindowState] = [:]) {
+    public init(message: String, recoveryStates: [UUID: OriginalWindowState] = [:], windowID: UUID? = nil) {
         self.message = message
         self.recoveryStates = recoveryStates
+        self.windowID = windowID
     }
 }
 

@@ -34,6 +34,8 @@ Use a disposable test document and normal app windows. Close both SpaceTabs proc
 
 ### Tabs and focus
 
+- Open Settings, close its window, and reopen it. The same helper and selected page should return without another process launch. On a first launch, the window should render its connecting state before authentication finishes, then enable its controls after a snapshot arrives. Explicitly quit Settings to exercise the cold path. Quit the manager during startup and verify no orphan helper or socket remains; a disconnected helper should terminate.
+
 - Assign windows from at least two different apps to A and B; include C in a three-zone template.
 - Switch each group's tabs and check that the other groups keep their selection and geometry.
 - Place two windows from the same app in different zones and verify that the requested window receives focus.
@@ -49,6 +51,7 @@ Use a disposable test document and normal app windows. Close both SpaceTabs proc
 - Restart with saved tabs and verify the bars show **Loading tabs…** during discovery and recovery, then show restored windows. Unmatched saved windows should stop loading and show **Saved windows unavailable** in otherwise empty zones. A later unrelated scan should not show startup loading again. Check that denied permissions, pause, and blocked configuration do not leave a spinner running.
 - Include a display with negative coordinates or a vertical offset.
 - Resize a managed window manually. A single tab click should preserve its size; double-click should fill the zone.
+- Drag the column divider from 25% to 20% and verify the preview line shows Left 20% / Right 80%. Row dragging should show Top / Bottom percentages. Preview must not write external window frames. If an app rejects the new size, the prior layout settings should return and Settings should name the app that rejected it; verify rollback and release still work.
 - Focus a window in B while A was selected earlier, then zoom. The focused B window must expand. Repeat the shortcut to restore its previous frame.
 - Focus an unmanaged window and try zoom. It must not enlarge a different window in A.
 

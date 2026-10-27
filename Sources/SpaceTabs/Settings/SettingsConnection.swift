@@ -13,12 +13,16 @@ import SpaceTabsCore
     private var launching = false
     private var observing = false
     private var lastState: SettingsState?
+    private var launchTask: Task<Void, Never>?
+    private var stopped = false
     private var helperURL: URL { Bundle.main.bundleURL.appendingPathComponent(SpaceTabsIdentity.settingsBundlePath) }
     init(model: AppModel) { self.model = model }
     func show() {
+        guard !stopped, !model.terminating else { return }
         if let helper, !helper.isTerminated {
             NSApp.yieldActivation(to: helper)
             connection?.send(SettingsPacket(kind: .show))
+            if connection != nil { return }
             let configuration = NSWorkspace.OpenConfiguration()
             configuration.activates = true
             NSWorkspace.shared.openApplication(at: helperURL, configuration: configuration) { _, _ in }
@@ -30,41 +34,63 @@ import SpaceTabsCore
                 "SpaceTabs Settings was not found. Build the full app with Scripts/build-app.sh release.")
             return
         }
-        do {
-            if server == nil {
-                let verifier = SettingsPeerVerifier(application: helperURL)
-                guard verifier.requirement != nil else { throw SettingsTransportError.untrustedPeer }
-                server = try SettingsSocketServer(verifier: verifier) { [weak self] fd in
+        launching = true
+        launchTask = Task {
+            do {
+                if server == nil {
+                    let application = helperURL
+                    let prepared = try await SettingsTransportSetup.perform { [weak self] in
+                        let verifier = SettingsPeerVerifier(application: application)
+                        guard verifier.requirement != nil else { throw SettingsTransportError.untrustedPeer }
+                        return try SettingsSocketServer(verifier: verifier) { [weak self] fd in
+                            Task { @MainActor in
+                                guard let self else {
+                                    Darwin.close(fd)
+                                    return
+                                }
+                                self.accept(fd)
+                            }
+                        }
+                    }
+                    guard !Task.isCancelled, !stopped else {
+                        prepared.stop()
+                        return
+                    }
+                    server = prepared
+                }
+                guard !Task.isCancelled, !stopped, let server else { return }
+                let configuration = NSWorkspace.OpenConfiguration()
+                configuration.arguments = [
+                    "--settings-socket", server.path, "--language", model.preferences.language.rawValue,
+                ]
+                configuration.activates = true
+                NSWorkspace.shared.openApplication(at: helperURL, configuration: configuration) {
+                    [weak self] application, error in
                     Task { @MainActor in
-                        guard let self else {
-                            Darwin.close(fd)
+                        guard let self, !self.stopped else {
+                            application?.terminate()
                             return
                         }
-                        self.accept(fd)
+                        self.launching = false
+                        self.helper = application
+                        if let error {
+                            self.model.message = L10n.tr("Could not open Settings: \(error.localizedDescription)")
+                        }
                     }
                 }
+            } catch is CancellationError {
+                launching = false
+            } catch {
+                launching = false
+                if !stopped { model.message = error.localizedDescription }
             }
-            guard let server else { return }
-            let configuration = NSWorkspace.OpenConfiguration()
-            configuration.arguments = [
-                "--settings-socket", server.path, "--language", model.preferences.language.rawValue,
-            ]
-            configuration.activates = true
-            launching = true
-            NSWorkspace.shared.openApplication(at: helperURL, configuration: configuration) {
-                [weak self] application, error in
-                Task { @MainActor in
-                    guard let self else { return }
-                    self.launching = false
-                    self.helper = application
-                    if let error {
-                        self.model.message = L10n.tr("Could not open Settings: \(error.localizedDescription)")
-                    }
-                }
-            }
-        } catch { model.message = error.localizedDescription }
+        }
     }
     private func accept(_ fd: Int32) {
+        guard !stopped else {
+            Darwin.close(fd)
+            return
+        }
         connection?.close()
         lastState = nil
         connection = SettingsChannel(
@@ -198,6 +224,10 @@ import SpaceTabsCore
         pushState()
     }
     func stop() {
+        stopped = true
+        launchTask?.cancel()
+        launchTask = nil
+        launching = false
         connection?.send(SettingsPacket(kind: .close))
         connection?.close()
         connection = nil

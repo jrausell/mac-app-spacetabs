@@ -142,6 +142,15 @@ extension AppModel {
                 self.ratio = self.appliedRatio
                 self.rowRatio = self.appliedRowRatio
                 self.selectedScreenID = self.appliedScreenID
+                if let failure = error as? WindowError, let id = failure.windowID,
+                    let window = self.windows.first(where: { $0.id == id })
+                {
+                    throw WindowError(
+                        message: L10n.tr(
+                            "Could not resize \(window.appName). The previous layout settings were restored. \(failure.localizedDescription)"
+                        ),
+                        recoveryStates: failure.recoveryStates, windowID: id)
+                }
                 throw error
             }
         }

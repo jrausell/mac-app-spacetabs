@@ -207,7 +207,10 @@ private func engine(_ backend: TestWindows) -> WindowOperations<TestWindows> {
     do {
         try await engine(backend).execute([.place(id, destination)])
         Issue.record("Expected the placement to be rejected.")
-    } catch let error as WindowOperationError { #expect(error.recoveryStates.isEmpty) } catch {
+    } catch let error as WindowOperationError {
+        #expect(error.recoveryStates.isEmpty)
+        #expect(error.windowID == id)
+    } catch {
         Issue.record("Error inesperado: \(error)")
     }
     #expect(await backend.writes(id) == 0)

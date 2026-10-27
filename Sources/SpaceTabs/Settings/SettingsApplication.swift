@@ -17,6 +17,7 @@ import SwiftUI
     private var window: NSWindow?
     private var languageObserver: NSObjectProtocol?
     private var localeObserver: NSObjectProtocol?
+    private var connectionTask: Task<Void, Never>?
     func applicationDidFinishLaunching(_ notification: Notification) {
         let arguments = CommandLine.arguments
         guard let index = arguments.firstIndex(of: "--settings-socket"), arguments.indices.contains(index + 1) else {
@@ -28,14 +29,8 @@ import SwiftUI
             NSApp.terminate(nil)
             return
         }
-        do { model.remoteSettings = try RemoteSettingsModel(model: model, path: arguments[index + 1]) } catch {
-            let alert = NSAlert()
-            alert.messageText = L10n.tr("Could not connect to SpaceTabs")
-            alert.informativeText = error.localizedDescription
-            alert.runModal()
-            NSApp.terminate(nil)
-            return
-        }
+        let remote = RemoteSettingsModel(model: model)
+        model.remoteSettings = remote
         model.showTabBars = { [weak model] in model?.remoteSettings?.send(.showTabs) }
         model.restartShortcuts = { [weak model] in model?.remoteSettings?.send(.restartShortcuts) }
         model.openSettings = { [weak self] in
@@ -71,8 +66,19 @@ import SwiftUI
         window.center()
         self.window = window
         showWindow()
+        let path = arguments[index + 1]
+        connectionTask = Task {
+            do { try await remote.connect(path: path) } catch is CancellationError {} catch {
+                let alert = NSAlert()
+                alert.messageText = L10n.tr("Could not connect to SpaceTabs")
+                alert.informativeText = error.localizedDescription
+                alert.runModal()
+                NSApp.terminate(nil)
+            }
+        }
     }
     func applicationWillTerminate(_ notification: Notification) {
+        connectionTask?.cancel()
         if let languageObserver { NotificationCenter.default.removeObserver(languageObserver) }
         if let localeObserver { NotificationCenter.default.removeObserver(localeObserver) }
     }
@@ -84,7 +90,7 @@ import SwiftUI
         showWindow()
         return false
     }
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
     @objc private func showWindow() {
         if window?.isMiniaturized == true { window?.deminiaturize(nil) }
         window?.makeKeyAndOrderFront(nil)

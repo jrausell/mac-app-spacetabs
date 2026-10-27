@@ -35,8 +35,10 @@ public struct WindowOperations<Backend: WindowAccess>: Sendable {
         var before: [UUID: OriginalWindowState] = [:]
         for command in commands where before[command.id] == nil { before[command.id] = try await snapshot(command.id) }
         var touched: [UUID] = []
+        var attemptedWindow: UUID?
         do {
             for command in commands {
+                attemptedWindow = command.id
                 var mutated = false
                 do {
                     switch command {
@@ -86,7 +88,8 @@ public struct WindowOperations<Backend: WindowAccess>: Sendable {
                 : L10n.tr(
                     " Could not confirm recovery: \(details.joined(separator: "; ")). SpaceTabs is paused. You can release the windows."
                 )
-            throw WindowOperationError(message: error.localizedDescription + suffix, recoveryStates: failed)
+            throw WindowOperationError(
+                message: error.localizedDescription + suffix, recoveryStates: failed, windowID: attemptedWindow)
         }
     }
 

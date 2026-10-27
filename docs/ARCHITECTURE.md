@@ -113,6 +113,8 @@ Desktop controls use nonactivating panels. The quick switcher must not activate 
 
 `SettingsHost` starts the bundled helper and publishes a `SettingsState` snapshot when observed state changes. Equal snapshots are not sent again. `SettingsCommand` is a typed, validated enum executed by the main process.
 
+Closing the Settings window keeps the helper and its view state ready for reuse. Show requests use the authenticated channel without another Launch Services request while the helper is connected. Explicit Quit, manager shutdown, and connection loss still terminate the helper. The first Settings window is constructed before authentication; its controls remain disabled until the first verified snapshot arrives. Signature inspection and socket setup run on a dedicated serial GCD queue, with cancelled startup resources disposed before they can outlive the manager.
+
 The transport uses a local Unix socket with a random path and user-only permissions. Both ends verify the peer PID and exact expected code hash. Frames are bounded to 4 MiB; typed message data is limited to 2 MiB. I/O runs on a serial background queue with a write timeout. No TCP service or executable configuration is involved.
 
 When adding a setting, follow this path:

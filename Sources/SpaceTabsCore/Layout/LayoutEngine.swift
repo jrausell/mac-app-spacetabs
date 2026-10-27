@@ -92,9 +92,9 @@ public struct LayoutEngine: Sendable {
         return zones
     }
 
-    /// A large handle belongs to the chrome, not the external window layout.
+    /// The handle belongs to the chrome, not the external window layout.
     /// Shorten the headers around it so it never covers their + buttons.
-    public func columnHeaders(for zones: [Zone: ZoneGeometry], handleWidth: CGFloat = 64) -> ColumnHeaders? {
+    public func columnHeaders(for zones: [Zone: ZoneGeometry], handleWidth: CGFloat = 32) -> ColumnHeaders? {
         guard let a = zones[.a]?.bar, let b = zones[.b]?.bar else { return nil }
         let reversed = b.minX < a.minX
         let leftBar = reversed ? b : a

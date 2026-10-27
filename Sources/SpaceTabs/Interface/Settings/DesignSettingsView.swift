@@ -121,7 +121,7 @@ struct DesignSettingsView: View {
                 }
                 Text(
                     L10n.tr(
-                        "You can also drag the WIDTH and HEIGHT handles when the tab bars are visible. Each column has a minimum width of 20%."
+                        "You can also drag the horizontal and vertical arrow handles when the tab bars are visible. Each column has a minimum width of 20%."
                     )
                 )
                 .font(.caption).foregroundStyle(.secondary)

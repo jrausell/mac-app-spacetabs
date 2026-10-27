@@ -136,8 +136,24 @@ struct ColumnResizeGuide: View {
     @Environment(\.colorScheme) private var systemScheme
     var body: some View {
         let _ = localization.language
-        Color(tabColor: model.tabAppearance.accent(for: .a, systemIsDark: systemScheme == .dark))
-            .opacity(0.9)
+        let fraction = model.columnResizePreview ?? (model.resizingRows ? model.rowRatio : model.ratio)
+        let first = Int((fraction * 100).rounded())
+        let palette = model.tabAppearance.palette(systemIsDark: systemScheme == .dark)
+        let accent = Color(tabColor: model.tabAppearance.accent(for: .a, systemIsDark: systemScheme == .dark))
+        ZStack {
+            Rectangle().fill(accent.opacity(0.9))
+                .frame(width: model.resizingRows ? nil : 4, height: model.resizingRows ? 4 : nil)
+            Text(
+                model.resizingRows
+                    ? L10n.tr("Top \(first)% · Bottom \(100 - first)%")
+                    : L10n.tr("Left \(first)% · Right \(100 - first)%")
+            )
+            .font(.system(size: 11, weight: .medium)).monospacedDigit()
+            .foregroundStyle(Color(tabColor: palette.foreground))
+            .padding(.horizontal, 10).padding(.vertical, 6)
+            .background(Color(tabColor: palette.background), in: Capsule())
+            .overlay(Capsule().strokeBorder(accent, lineWidth: 1))
+        }
     }
 }
 

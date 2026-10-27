@@ -180,7 +180,6 @@
 "Grant Access" = "Grant Access";
 "Grant Accessibility access to continue." = "Grant Accessibility access to continue.";
 "Granted" = "Granted";
-"HEIGHT" = "HEIGHT";
 "Have your zones ready when you start your Mac." = "Have your zones ready when you start your Mac.";
 "Hide Others" = "Hide Others";
 "Hide Settings" = "Hide Settings";
@@ -398,7 +397,7 @@
 "This Accessibility operation is not supported." = "This Accessibility operation is not supported.";
 "This app cannot {0} the window through Accessibility." = "This app cannot {0} the window through Accessibility.";
 "This shortcut is already assigned to another SpaceTabs action." = "This shortcut is already assigned to another SpaceTabs action.";
-"Three zones: A above C, with B as the main zone. Drag the HEIGHT handle to adjust the rows." = "Three zones: A above C, with B as the main zone. Drag the HEIGHT handle to adjust the rows.";
+"Three zones: A above C, with B as the main zone. Drag the vertical arrow handle to adjust the rows." = "Three zones: A above C, with B as the main zone. Drag the vertical arrow handle to adjust the rows.";
 "Try Demo" = "Try Demo";
 "Two Columns" = "Two Columns";
 "Two columns. Tabs from C are moved into A." = "Two columns. Tabs from C are moved into A.";
@@ -413,7 +412,6 @@
 "Version {0}" = "Version {0}";
 "View Details" = "View Details";
 "Visible macOS frame: {0}" = "Visible macOS frame: {0}";
-"WIDTH" = "WIDTH";
 "Wait for the current operation to finish." = "Wait for the current operation to finish.";
 "Wait for the desktop transition to finish." = "Wait for the desktop transition to finish.";
 "Waiting for approval in macOS System Settings." = "Waiting for approval in macOS System Settings.";
@@ -426,7 +424,7 @@
 "Windows still belong to their apps. macOS controls Spaces, native full screen, and floating windows." = "Windows still belong to their apps. macOS controls Spaces, native full screen, and floating windows.";
 "Windows use the full height. Tab bars float above them." = "Windows use the full height. Tab bars float above them.";
 "Workspace Restores" = "Workspace Restores";
-"You can also drag the WIDTH and HEIGHT handles when the tab bars are visible. Each column has a minimum width of 20%." = "You can also drag the WIDTH and HEIGHT handles when the tab bars are visible. Each column has a minimum width of 20%.";
+"You can also drag the horizontal and vertical arrow handles when the tab bars are visible. Each column has a minimum width of 20%." = "You can also drag the horizontal and vertical arrow handles when the tab bars are visible. Each column has a minimum width of 20%.";
 "You can browse all apps. Accessibility access is needed to manage windows." = "You can browse all apps. Accessibility access is needed to manage windows.";
 "Your first profile" = "Your first profile";
 "Your windows. Your zones. One desktop." = "Your windows. Your zones. One desktop.";
@@ -489,3 +487,6 @@
 "Loading tabs…" = "Loading tabs…";
 "Saved windows unavailable" = "Saved windows unavailable";
 "Fixed tab bars stay above app windows." = "Fixed tab bars stay above app windows.";
+"Top {0}% · Bottom {1}%" = "Top {0}% · Bottom {1}%";
+"Left {0}% · Right {1}%" = "Left {0}% · Right {1}%";
+"Could not resize {0}. The previous layout settings were restored. {1}" = "Could not resize {0}. The previous layout settings were restored. {1}";
