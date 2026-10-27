@@ -53,7 +53,7 @@
 "Assignment cancelled when Control was released." = "Asignación cancelada al soltar Control.";
 "Assignment requested for zone {0}." = "Asignación solicitada para la zona {0}.";
 "At login" = "Al iniciar sesión";
-"Auto uses the opposite macOS appearance. Bar backgrounds use 90% opacity. Text and zone labels adjust their contrast automatically." = "Automático utiliza la apariencia opuesta a macOS. Los fondos de las barras tienen un 90 % de opacidad. El texto y las etiquetas de zona ajustan su contraste automáticamente.";
+"Auto uses the opposite macOS appearance. Background opacity affects only the bar background. Text and zone labels adjust their contrast automatically." = "Automático utiliza la apariencia opuesta a macOS. La opacidad del fondo solo afecta al fondo de las barras. El texto y las etiquetas de zona ajustan su contraste automáticamente.";
 "Auto · Opposite to macOS" = "Automático · Opuesto a macOS";
 "Auto-hide tab bars: {0}" = "Ocultar barras automáticamente: {0}";
 "Automatic AX notifications are temporarily unavailable ({0}). This does not mean global access was lost. Use Refresh to retry." = "Los avisos AX automáticos no están disponibles temporalmente ({0}). Esto no significa que se haya perdido el acceso global. Pulsa Actualizar para reintentarlo.";
@@ -482,3 +482,10 @@
 "⌃ Control · ⌥ Option · ⇧ Shift · ⌘ Command" = "⌃ Control · ⌥ Option · ⇧ Shift · ⌘ Command";
 "⌘ Command" = "⌘ Command";
 "⌥ Option" = "⌥ Option";
+"Background Opacity" = "Opacidad del fondo";
+"Window numbers available: {0}/{1}" = "Identificadores de ventana disponibles: {0}/{1}";
+"Show Tabs brings them to the front for five seconds. They stay in front while you use them, then return behind app windows." = "Mostrar pestañas las trae al frente durante cinco segundos. Permanecen delante mientras las utilizas y después vuelven detrás de las ventanas.";
+"Keep fixed tab bars above all windows" = "Mantener las barras fijas por encima de todas las ventanas";
+"Loading tabs…" = "Cargando pestañas…";
+"Saved windows unavailable" = "Ventanas guardadas no disponibles";
+"Fixed tab bars stay above app windows." = "Las barras fijas permanecen por encima de las ventanas.";

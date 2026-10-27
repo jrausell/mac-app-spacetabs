@@ -7,17 +7,39 @@ public enum WindowReconciler {
         UUID]
     {
         var result: [UUID: UUID] = [:]
-        for tab in saved {
-            let candidates = windows.filter { matches(tab.identity, $0.identity) }
+        func sameProcess(_ tab: SavedTab) -> Bool {
+            guard let pid = tab.processID, let date = tab.launchDate else { return false }
+            return launchDates[pid] == date
+        }
+        func sameWindow(_ tab: SavedTab, _ window: WindowSnapshot) -> Bool {
+            sameProcess(tab) && tab.windowNumber != nil && tab.windowNumber == window.windowNumber
+                && tab.processID == window.pid && tab.identity.bundleID == window.identity.bundleID
+        }
+        // A browser's active page is mutable content, not its window identity.
+        // Window numbers are useful only within the exact running app instance.
+        for tab in saved where sameProcess(tab) && tab.windowNumber != nil {
+            let candidates = windows.filter { $0.compatible && sameWindow(tab, $0) }
+            guard candidates.count == 1, let window = candidates.first,
+                saved.filter({ sameWindow($0, window) }).count == 1
+            else { continue }
+            result[tab.id] = window.id
+        }
+        // A missing known window must not be replaced by another window that
+        // happens to show the former page. Legacy sessions still use unique titles.
+        let semantic = saved.filter { !(sameProcess($0) && $0.windowNumber != nil) }
+        for tab in semantic {
+            let candidates = windows.filter {
+                $0.compatible && !result.values.contains($0.id) && matches(tab.identity, $0.identity)
+            }
             guard candidates.count == 1, let candidate = candidates.first,
-                saved.filter({ matches($0.identity, candidate.identity) }).count == 1
+                semantic.filter({ matches($0.identity, candidate.identity) }).count == 1
             else { continue }
             result[tab.id] = candidate.id
         }
         // Browser/terminal titles may change while SpaceTabs is being updated.
         // Only fall back when exactly one saved and one live window belong to
         // the very same running process. A known document must still match.
-        for tab in saved where result[tab.id] == nil && (tab.identity.document ?? "").isEmpty {
+        for tab in semantic where result[tab.id] == nil && (tab.identity.document ?? "").isEmpty {
             guard let pid = tab.processID, let date = tab.launchDate, launchDates[pid] == date,
                 saved.filter({ $0.identity.bundleID == tab.identity.bundleID }).count == 1
             else { continue }

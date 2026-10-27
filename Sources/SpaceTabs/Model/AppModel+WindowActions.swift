@@ -8,7 +8,7 @@ extension AppModel {
         if demo {
             tabs.assign(id, to: zone)
             layoutChanged()
-            showTabBars()
+            showTabBarsAfterInteraction()
             return
         }
         guard tabs.zone(of: id) == nil else { return }
@@ -41,7 +41,7 @@ extension AppModel {
             self.activeZone = zone
             // Configuration places the window without activating its app.
             self.layoutChanged()
-            self.showTabBars()
+            self.showTabBarsAfterInteraction()
             if requestFocus { try await self.focus(id, revision: revision) }
         }
     }

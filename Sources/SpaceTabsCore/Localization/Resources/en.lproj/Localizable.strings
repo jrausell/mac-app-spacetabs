@@ -53,7 +53,7 @@
 "Assignment cancelled when Control was released." = "Assignment cancelled when Control was released.";
 "Assignment requested for zone {0}." = "Assignment requested for zone {0}.";
 "At login" = "At login";
-"Auto uses the opposite macOS appearance. Bar backgrounds use 90% opacity. Text and zone labels adjust their contrast automatically." = "Auto uses the opposite macOS appearance. Bar backgrounds use 90% opacity. Text and zone labels adjust their contrast automatically.";
+"Auto uses the opposite macOS appearance. Background opacity affects only the bar background. Text and zone labels adjust their contrast automatically." = "Auto uses the opposite macOS appearance. Background opacity affects only the bar background. Text and zone labels adjust their contrast automatically.";
 "Auto · Opposite to macOS" = "Auto · Opposite to macOS";
 "Auto-hide tab bars: {0}" = "Auto-hide tab bars: {0}";
 "Automatic AX notifications are temporarily unavailable ({0}). This does not mean global access was lost. Use Refresh to retry." = "Automatic AX notifications are temporarily unavailable ({0}). This does not mean global access was lost. Use Refresh to retry.";
@@ -482,3 +482,10 @@
 "⌃ Control · ⌥ Option · ⇧ Shift · ⌘ Command" = "⌃ Control · ⌥ Option · ⇧ Shift · ⌘ Command";
 "⌘ Command" = "⌘ Command";
 "⌥ Option" = "⌥ Option";
+"Background Opacity" = "Background Opacity";
+"Window numbers available: {0}/{1}" = "Window numbers available: {0}/{1}";
+"Show Tabs brings them to the front for five seconds. They stay in front while you use them, then return behind app windows." = "Show Tabs brings them to the front for five seconds. They stay in front while you use them, then return behind app windows.";
+"Keep fixed tab bars above all windows" = "Keep fixed tab bars above all windows";
+"Loading tabs…" = "Loading tabs…";
+"Saved windows unavailable" = "Saved windows unavailable";
+"Fixed tab bars stay above app windows." = "Fixed tab bars stay above app windows.";

@@ -61,7 +61,7 @@ extension AppModel {
             select(id, zone: destination)
         } else {
             activeZone = destination
-            showTabBars()
+            showTabBarsAfterInteraction()
         }
     }
     func reorderTab(_ id: UUID, to zone: Zone, before other: UUID? = nil) {
@@ -74,7 +74,7 @@ extension AppModel {
         tabs.reorder(id, in: zone, before: other)
         saveLayout()
         layoutChanged()
-        showTabBars()
+        showTabBarsAfterInteraction()
     }
 }
 

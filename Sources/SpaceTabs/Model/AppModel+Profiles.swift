@@ -103,7 +103,7 @@ extension AppModel {
                 if !self.activeZones.contains(self.activeZone) { self.activeZone = .b }
                 self.message = L10n.tr(
                     "Profile “\(profile.name)” applied. Closed apps will be assigned when you open them.")
-                self.showTabBars()
+                self.showTabBarsAfterInteraction()
             } catch {
                 install(oldLayout)
                 self.pendingTabs = oldPending

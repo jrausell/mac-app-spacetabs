@@ -21,18 +21,25 @@ struct TabAppearanceSettings: View {
     @Bindable var model: AppModel
     @Environment(\.colorScheme) private var systemScheme
 
+    private func updateAppearance(_ change: (inout TabAppearance) -> Void) {
+        var appearance = model.tabAppearance
+        change(&appearance)
+        model.tabAppearance = appearance
+        model.appearancePreferenceChanged()
+    }
+
     private func colorBinding(_ keyPath: WritableKeyPath<TabAppearance, TabColor>) -> Binding<Color> {
         Binding(
             get: { Color(tabColor: model.tabAppearance[keyPath: keyPath]) },
             set: { color in
-                if let color = TabColor(color: color) { model.tabAppearance[keyPath: keyPath] = color }
+                if let color = TabColor(color: color) { updateAppearance { $0[keyPath: keyPath] = color } }
             })
     }
     private var backgroundBinding: Binding<Color> {
         Binding(
             get: { Color(tabColor: model.tabAppearance.palette(systemIsDark: systemScheme == .dark).background) },
             set: { color in
-                if let color = TabColor(color: color) { model.tabAppearance.backgroundOverride = color }
+                if let color = TabColor(color: color) { updateAppearance { $0.backgroundOverride = color } }
             })
     }
 
@@ -40,7 +47,17 @@ struct TabAppearanceSettings: View {
         let _ = localization.language
         GroupBox(L10n.tr("Tab Bar and Zone Colors")) {
             VStack(alignment: .leading, spacing: 16) {
-                Picker(L10n.tr("Appearance"), selection: $model.tabAppearance.mode) {
+                Picker(
+                    L10n.tr("Appearance"),
+                    selection: Binding(
+                        get: { model.tabAppearance.mode },
+                        set: { mode in
+                            updateAppearance {
+                                $0.mode = mode
+                                $0.backgroundOverride = nil
+                            }
+                        })
+                ) {
                     Text(L10n.tr("Auto · Opposite to macOS")).tag(TabBarMode.automatic)
                     Text(L10n.tr("Light · White Background")).tag(TabBarMode.light)
                     Text(L10n.tr("Dark · Black Background")).tag(TabBarMode.dark)
@@ -48,7 +65,7 @@ struct TabAppearanceSettings: View {
                 Grid(alignment: .leading, horizontalSpacing: 32, verticalSpacing: 14) {
                     GridRow {
                         ColorPicker(L10n.tr("Tab Bar Background"), selection: backgroundBinding, supportsOpacity: false)
-                        Button(L10n.tr("Theme Background")) { model.tabAppearance.backgroundOverride = nil }
+                        Button(L10n.tr("Theme Background")) { updateAppearance { $0.backgroundOverride = nil } }
                             .disabled(model.tabAppearance.backgroundOverride == nil)
                     }
                     GridRow {
@@ -66,19 +83,24 @@ struct TabAppearanceSettings: View {
                             supportsOpacity: false)
                     }
                 }
+                HStack {
+                    Text(L10n.tr("Background Opacity"))
+                    Slider(
+                        value: Binding(
+                            get: { model.tabAppearance.backgroundOpacity },
+                            set: { opacity in updateAppearance { $0.backgroundOpacity = opacity } }),
+                        in: 0...1, step: 0.01
+                    ).accessibilityLabel(L10n.tr("Background Opacity"))
+                    Text(model.tabAppearance.backgroundOpacity, format: .percent.precision(.fractionLength(0)))
+                        .monospacedDigit().frame(minWidth: 44, alignment: .trailing)
+                }
                 Text(
                     L10n.tr(
-                        "Auto uses the opposite macOS appearance. Bar backgrounds use 90% opacity. Text and zone labels adjust their contrast automatically."
+                        "Auto uses the opposite macOS appearance. Background opacity affects only the bar background. Text and zone labels adjust their contrast automatically."
                     )
                 )
                 .font(.caption).foregroundStyle(.secondary)
             }.padding(10)
         }
-        .onChange(of: model.tabAppearance.mode) {
-            if model.remoteSettings?.state?.tabAppearance.mode != model.tabAppearance.mode {
-                model.tabAppearance.backgroundOverride = nil
-            }
-        }
-        .onChange(of: model.tabAppearance) { model.appearancePreferenceChanged() }
     }
 }

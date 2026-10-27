@@ -48,18 +48,23 @@ public struct TabPalette: Equatable, Sendable {
 public struct TabAppearance: Codable, Equatable, Sendable {
     public var mode: TabBarMode = .automatic
     public var backgroundOverride: TabColor?
+    public var backgroundOpacity = 0.9
+    public var keepFixedBarsBehindWindows = true
     public var colorA = TabColor(1, 0.48, 0.05)
     public var colorB = TabColor(0.12, 0.46, 0.95)
     public var colorC = TabColor(0.15, 0.65, 0.3)
     public var dragBorderColor: TabColor = .white
     public init() {}
     private enum CodingKeys: String, CodingKey {
-        case mode, backgroundOverride, colorA, colorB, colorC, dragBorderColor
+        case mode, backgroundOverride, backgroundOpacity, keepFixedBarsBehindWindows, colorA, colorB, colorC,
+            dragBorderColor
     }
     public init(from decoder: any Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         mode = try values.decode(TabBarMode.self, forKey: .mode)
         backgroundOverride = try values.decodeIfPresent(TabColor.self, forKey: .backgroundOverride)
+        backgroundOpacity = try values.decodeIfPresent(Double.self, forKey: .backgroundOpacity) ?? 0.9
+        keepFixedBarsBehindWindows = try values.decodeIfPresent(Bool.self, forKey: .keepFixedBarsBehindWindows) ?? true
         colorA = try values.decode(TabColor.self, forKey: .colorA)
         colorB = try values.decode(TabColor.self, forKey: .colorB)
         colorC = try values.decodeIfPresent(TabColor.self, forKey: .colorC) ?? TabColor(0.15, 0.65, 0.3)
@@ -68,6 +73,7 @@ public struct TabAppearance: Codable, Equatable, Sendable {
     public var isValid: Bool {
         dragBorderColor.isValid && colorA.isValid && colorB.isValid && colorC.isValid
             && (backgroundOverride?.isValid ?? true)
+            && backgroundOpacity.isFinite && (0...1).contains(backgroundOpacity)
     }
     public func palette(systemIsDark: Bool) -> TabPalette {
         let dark: Bool =

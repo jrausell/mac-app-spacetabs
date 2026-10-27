@@ -73,6 +73,8 @@ A running AX call cannot be cancelled instantly. Timeouts bound individual calls
 
 `WindowRefreshQueue` groups structural events by process. Title changes do not schedule discovery. File-system notifications and explicit refreshes update the installed-app catalog. A five-second environment check observes permissions and display bounds; it is not a full window scan.
 
+Each discovery batch reads public Window Server metadata once on a dedicated GCD executor. Per-process sessions associate a window number only with a unique process/bounds match and retain it while the same AX window lives. Page titles and URLs can change without changing that number. Saved-session recovery uses it only with the original PID and process launch date; profiles do not carry process-local numbers. Drag assignment can read the metadata after capture, outside gesture callbacks.
+
 Known tab selections and explicit drag assignments need not wait for unrelated discovery. A discovery result waits before applying structural changes during a transaction. The merge retains newly adopted managed windows that an older snapshot did not contain, unless the window was explicitly removed.
 
 ## Placement and recovery
@@ -82,6 +84,10 @@ Known tab selections and explicit drag assignments need not wait for unrelated d
 Normal reflow does not raise windows. Tab switching does not minimize other tabs. Switching focus and changing geometry are separate operations; a single click preserves manual geometry, while a double click fills that window's zone.
 
 Fixed bars reserve a header. Auto-hidden bars float over full-height zone content. Coordinate conversion uses the primary display's top edge, not the chosen monitor's height. This matters for monitors with negative or offset coordinates.
+
+Fixed bars optionally rest one window level below normal app windows. TabBarVisibility tracks a temporary Show Tabs reveal independently of permanent visibility: expiry lowers fixed bars instead of hiding them. PanelController changes only the bars' and resize handles' public NSWindow levels; it does not reorder, query, or resize external windows to enforce this setting. Layout updates do not renew the reveal timer.
+
+Fixed bars rest behind app windows by default. The foreground checkbox inverts the existing stored background preference. Desktop bars derive their loading indicator from discovery and pending-recovery state; no loading timer, extra scans, or new persistence fields are needed. Unmatched idle sessions stop loading rather than displaying an indefinite spinner.
 
 ## Focus and zoom
 

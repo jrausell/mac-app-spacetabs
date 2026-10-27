@@ -45,6 +45,8 @@ Use a disposable test document and normal app windows. Close both SpaceTabs proc
 
 - Check all three templates, both resize handles, and minimum proportions.
 - Check fixed bars and auto-hide bars with the macOS menu bar and Dock set to visible and auto-hidden.
+- Leave **Keep fixed tab bars above all windows** unchecked, cover a bar with an unmanaged app, and verify the app stays unobstructed. Show Tabs should raise bars and resize handles without activating SpaceTabs, then lower them after five seconds without hiding them. Hover, context menus, and tab dragging should hold the reveal; an outside click should lower it immediately. Changing appearance or layout during a reveal must not restart its timer. Check the setting and verify floating behavior; also check pause/resume and auto-hide.
+- Restart with saved tabs and verify the bars show **Loading tabs…** during discovery and recovery, then show restored windows. Unmatched saved windows should stop loading and show **Saved windows unavailable** in otherwise empty zones. A later unrelated scan should not show startup loading again. Check that denied permissions, pause, and blocked configuration do not leave a spinner running.
 - Include a display with negative coordinates or a vertical offset.
 - Resize a managed window manually. A single tab click should preserve its size; double-click should fill the zone.
 - Focus a window in B while A was selected earlier, then zoom. The focused B window must expand. Repeat the shortcut to restore its previous frame.
@@ -74,6 +76,7 @@ Use a disposable test document and normal app windows. Close both SpaceTabs proc
 ### Profiles and lifecycle
 
 - Save, apply, replace, and delete a profile. Include closed apps and ambiguous window titles.
+- Open three Chrome windows across two displays and assign only one. Switch and close browser tabs inside it, then restart SpaceTabs while Chrome keeps running. The same window should recover even if its title and page URL changed. Closing that entire window must not cause a different Chrome window showing its former page to be assigned. Older unmatched sessions need one manual reassignment to record a window number.
 - Link a profile to the current display setup, disconnect and reconnect a display, then restart without the previously selected display.
 - Pause manually before a display or Space change. An automatic profile must not resume that pause.
 - Change native Spaces, enter and leave native full screen, sleep and wake, and lock and unlock the session.

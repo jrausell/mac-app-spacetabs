@@ -28,6 +28,12 @@ struct TabBarView: View {
                 minWidth: 20, maxWidth: model.preferences.zoneNames[zone, default: ""].isEmpty ? 20 : 110)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 4) {
+                    if model.isLoadingTabs {
+                        HStack(spacing: 6) {
+                            ProgressView().controlSize(.small)
+                            Text(L10n.tr("Loading tabs…")).font(.system(size: 11))
+                        }.padding(.horizontal, 8).accessibilityElement(children: .combine)
+                    }
                     ForEach(model.tabs.windows[zone, default: []], id: \.self) { id in
                         WindowTabButton(
                             windowID: id, title: model.titles[id] ?? L10n.tr("Window"), icon: icon(for: id),
@@ -61,7 +67,7 @@ struct TabBarView: View {
                                 model.busy || model.scanning)
                         }
                     }
-                    ForEach(model.pendingApplicationAssignments(in: zone)) { rule in
+                    ForEach(model.isLoadingTabs ? [] : model.pendingApplicationAssignments(in: zone)) { rule in
                         Button {
                             model.launchApplication(
                                 InstalledApplication(url: rule.url, name: rule.name, bundleID: rule.bundleID))
@@ -88,8 +94,12 @@ struct TabBarView: View {
                     }
                     if model.tabs.windows[zone, default: []].isEmpty
                         && model.pendingApplicationAssignments(in: zone).isEmpty
+                        && !model.isLoadingTabs
                     {
-                        Text(L10n.tr("Add a window")).font(.system(size: 11)).foregroundStyle(.secondary)
+                        Text(
+                            model.pendingTabs.contains(where: { $0.zone == zone })
+                                ? L10n.tr("Saved windows unavailable") : L10n.tr("Add a window")
+                        ).font(.system(size: 11)).foregroundStyle(.secondary)
                     }
                 }
             }
@@ -104,7 +114,7 @@ struct TabBarView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background {
             RoundedRectangle(cornerRadius: 10)
-                .fill(Color(tabColor: palette.background).opacity(0.9))
+                .fill(Color(tabColor: palette.background).opacity(model.tabAppearance.backgroundOpacity))
         }
         .foregroundStyle(Color(tabColor: palette.foreground))
         .environment(\.colorScheme, palette.isDark ? .dark : .light)

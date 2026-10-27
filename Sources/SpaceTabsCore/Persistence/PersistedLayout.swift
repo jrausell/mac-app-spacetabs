@@ -9,10 +9,12 @@ public struct SavedTab: Codable, Equatable, Sendable, Identifiable {
     public let original: OriginalWindowState?
     public let processID: Int32?
     public let launchDate: Date?
+    public let windowNumber: UInt32?
 
     public init(
         id: UUID, identity: WindowIdentity, zone: Zone, selected: Bool,
-        original: OriginalWindowState? = nil, processID: Int32? = nil, launchDate: Date? = nil
+        original: OriginalWindowState? = nil, processID: Int32? = nil, launchDate: Date? = nil,
+        windowNumber: UInt32? = nil
     ) {
         self.id = id
         self.identity = identity
@@ -21,6 +23,7 @@ public struct SavedTab: Codable, Equatable, Sendable, Identifiable {
         self.original = original
         self.processID = processID
         self.launchDate = launchDate
+        self.windowNumber = windowNumber
     }
 }
 
@@ -88,7 +91,8 @@ extension PersistedLayout {
                 && selectedZones.insert(zone).inserted
             return SavedTab(
                 id: tab.id, identity: tab.identity, zone: zone, selected: selected,
-                original: tab.original, processID: tab.processID, launchDate: tab.launchDate)
+                original: tab.original, processID: tab.processID, launchDate: tab.launchDate,
+                windowNumber: tab.windowNumber)
         }
         applicationAssignments = applicationAssignments.map { rule in
             var rule = rule

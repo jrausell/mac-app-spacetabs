@@ -111,7 +111,7 @@ extension AppModel {
         catalogMessage =
             L10n.tr("\(application.name) assigned to \(zone.title). Its windows will be placed there when available.")
         layoutChanged()
-        showTabBars()
+        showTabBarsAfterInteraction()
         applyApplicationAssignments()
         // One scoped discovery for an explicit assignment, never an idle poll.
         for app in NSWorkspace.shared.runningApplications
@@ -227,7 +227,7 @@ extension AppModel {
             self.pendingTabs.removeAll { matchingPending.contains($0.id) }
             // Confirm each actual placement, including rules whose windows appear later.
             self.layoutChanged()
-            self.showTabBars()
+            self.showTabBarsAfterInteraction()
             // Do not activate an app or steal keyboard focus for an automatic rule.
         }
     }

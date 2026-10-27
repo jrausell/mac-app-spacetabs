@@ -38,7 +38,8 @@ extension AppModel {
                 return SavedTab(
                     id: id, identity: snapshot.identity, zone: zone, selected: tabs.selected[zone] == id,
                     original: originals[id], processID: snapshot.pid,
-                    launchDate: NSRunningApplication(processIdentifier: snapshot.pid)?.launchDate)
+                    launchDate: NSRunningApplication(processIdentifier: snapshot.pid)?.launchDate,
+                    windowNumber: snapshot.windowNumber)
             }
         }
         // A pending selected tab must not compete with a live selection in the same zone.
@@ -48,7 +49,8 @@ extension AppModel {
             SavedTab(
                 id: saved.id, identity: saved.identity, zone: saved.zone,
                 selected: saved.selected && !live.contains(where: { $0.zone == saved.zone && $0.selected }),
-                original: saved.original, processID: saved.processID, launchDate: saved.launchDate)
+                original: saved.original, processID: saved.processID, launchDate: saved.launchDate,
+                windowNumber: saved.windowNumber)
         }
         return PersistedLayout(
             ratio: ratio, screenID: selectedScreenID, tabs: live + pending, autoHideTabBars: autoHideTabBars,

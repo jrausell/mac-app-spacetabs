@@ -33,7 +33,8 @@ extension PersistedLayout {
             guard !tab.identity.bundleID.isEmpty, tab.identity.bundleID != SpaceTabsIdentity.appBundleID,
                 tab.identity.bundleID.utf8.count <= 512, tab.identity.title.utf8.count <= 16_384,
                 (tab.identity.document?.utf8.count ?? 0) <= 65_536,
-                tab.processID.map({ $0 > 0 }) ?? true
+                tab.processID.map({ $0 > 0 }) ?? true,
+                tab.windowNumber.map({ $0 > 0 }) ?? true
             else { throw ConfigurationError(L10n.tr("Invalid window identity.")) }
             if let frame = tab.original?.frame {
                 guard [frame.minX, frame.minY, frame.width, frame.height].allSatisfy(\.isFinite), frame.width > 0,

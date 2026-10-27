@@ -4,6 +4,70 @@ import Testing
 
 @testable import SpaceTabsCore
 
+@Test func fixedBarsCanRestBehindWindowsAndShowTabsRaisesThemTemporarily() {
+    var state = TabBarVisibility()
+    state.setAutoHide(false, at: 0)
+    state.setKeepFixedBarsBehindWindows(true)
+    #expect(state.isVisible && !state.isAboveWindows && state.deadline == nil)
+    state.reveal(at: 10)
+    #expect(state.isAboveWindows && state.deadline == 15)
+    state.showFixed()  // Geometry and appearance updates must not renew the reveal.
+    state.expire(at: 15)
+    #expect(state.isVisible && !state.isAboveWindows && !state.canExpire)
+    state.reveal(at: 20)
+    state.reveal(at: 24)
+    state.expire(at: 25)
+    #expect(state.isAboveWindows)
+    state.expire(at: 29)
+    #expect(state.isVisible && !state.isAboveWindows)
+}
+
+@Test func temporarilyRaisedFixedBarsRemainUsableAndOutsideClicksLowerThem() {
+    var state = TabBarVisibility()
+    state.setAutoHide(false, at: 0)
+    state.setKeepFixedBarsBehindWindows(true)
+    state.setHovered(true, at: 1)
+    #expect(state.deadline == nil && !state.isAboveWindows)
+    state.setHovered(false, at: 2)
+    state.reveal(at: 3)
+    state.setHovered(true, at: 4)
+    state.expire(at: 100)
+    #expect(state.isAboveWindows)
+    state.setHovered(false, at: 100)
+    state.setMenuTracking(true, at: 101)
+    state.expire(at: 200)
+    #expect(state.isAboveWindows)
+    state.setMenuTracking(false, at: 200)
+    state.expire(at: 205)
+    #expect(state.isVisible && !state.isAboveWindows)
+    state.reveal(at: 210)
+    state.pointerDown(at: .zero, interactiveFrames: [])
+    #expect(state.isVisible && !state.isAboveWindows && state.deadline == nil)
+    state.setHovered(false, at: 211)
+    state.setMenuTracking(false, at: 211)
+    #expect(!state.isAboveWindows)
+}
+
+@Test func backgroundBarsCanBeDisabledAndDoNotChangeAutoHideOrPauseBehavior() {
+    var state = TabBarVisibility()
+    state.setKeepFixedBarsBehindWindows(true)
+    state.reveal(at: 0)
+    #expect(state.isAboveWindows)
+    state.expire(at: 5)
+    #expect(!state.isVisible)
+    state.setAutoHide(false, at: 6)
+    #expect(state.isVisible && !state.isAboveWindows)
+    state.reveal(at: 7)
+    state.setKeepFixedBarsBehindWindows(false)
+    state.expire(at: 100)
+    #expect(state.isVisible && state.isAboveWindows && state.deadline == nil)
+    state.setKeepFixedBarsBehindWindows(true)
+    state.hide()
+    #expect(!state.isVisible && state.deadline == nil)
+    state.showFixed()
+    #expect(state.isVisible && !state.isAboveWindows)
+}
+
 @Test func tabBarsStartHiddenAndExpireAfterFiveSeconds() {
     var state = TabBarVisibility()
     #expect(!state.isVisible)
@@ -84,6 +148,7 @@ import Testing
 
 @Test func permanentlyVisibleHeadersIgnoreTimeoutAndOutsideClicksButStillPause() {
     var state = TabBarVisibility()
+    state.setKeepFixedBarsBehindWindows(false)
     state.setAutoHide(false, at: 0)
     state.expire(at: 100)
     state.pointerDown(at: CGPoint(x: 0, y: 0), interactiveFrames: [])

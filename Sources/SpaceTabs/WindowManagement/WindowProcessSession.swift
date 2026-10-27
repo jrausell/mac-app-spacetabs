@@ -53,6 +53,10 @@ actor WindowProcessSession: WindowAccess, WindowPresentationAccess {
         L10n.tr(
             "Full scans: \(fullDiscoveries)\nApp scans: \(scopedDiscoveries)\nCached windows: \(entries.count)\nApp observers: \(observers.count)\nLast scan (ms): \(Int(lastScanMilliseconds))\nRaises with focus: \(focusRaises)\nRaises without focus: \(backgroundRaises)\nRecent AX selections:\n\(focusTrace.joined(separator: "\n"))"
         )
+            + "\n"
+            + L10n.tr(
+                "Window numbers available: \(entries.values.filter { $0.snapshot.windowNumber != nil }.count)/\(entries.count)"
+            )
     }
 
     private func sortedSnapshots() -> [WindowSnapshot] {
@@ -144,7 +148,7 @@ actor WindowProcessSession: WindowAccess, WindowPresentationAccess {
         let old = entry.snapshot
         entry.snapshot = WindowSnapshot(
             id: old.id, pid: old.pid, appName: old.appName, identity: old.identity,
-            state: state, incompatibility: old.incompatibility)
+            state: state, incompatibility: old.incompatibility, windowNumber: old.windowNumber)
         entries[id] = entry
     }
 
@@ -248,7 +252,9 @@ actor WindowProcessSession: WindowAccess, WindowPresentationAccess {
             id: id, pid: candidate.pid, appName: app.localizedName ?? L10n.tr("App"),
             identity: WindowIdentity(
                 bundleID: bundleID, title: string(candidate.element, kAXTitleAttribute) ?? "",
-                document: string(candidate.element, kAXDocumentAttribute)), state: state)
+                document: string(candidate.element, kAXDocumentAttribute)), state: state,
+            windowNumber: entries[id]?.snapshot.windowNumber
+                ?? WindowServerWindow.number(for: state.frame, pid: candidate.pid, in: WindowServerCatalog.read()))
         entries[id] = Entry(element: candidate.element, pid: candidate.pid, snapshot: snapshot)
         let root = AXUIElementCreateApplication(candidate.pid)
         AXUIElementSetMessagingTimeout(root, 0.2)
@@ -382,7 +388,10 @@ actor WindowProcessSession: WindowAccess, WindowPresentationAccess {
 
     // MARK: - Discovery
 
-    func scan(apps: [ApplicationDescriptor], only processes: Set<Int32>? = nil) -> ScanResult {
+    func scan(
+        apps: [ApplicationDescriptor], only processes: Set<Int32>? = nil,
+        serverWindows: [WindowServerWindow] = []
+    ) -> ScanResult {
         let started = Date()
         defer { lastScanMilliseconds = Date().timeIntervalSince(started) * 1000 }
         guard AXIsProcessTrusted() else {
@@ -467,7 +476,9 @@ actor WindowProcessSession: WindowAccess, WindowPresentationAccess {
                     document: string(element, kAXDocumentAttribute))
                 let snapshot = WindowSnapshot(
                     id: id, pid: app.pid, appName: app.name, identity: identity,
-                    state: state, incompatibility: reason)
+                    state: state, incompatibility: reason,
+                    windowNumber: entries[id]?.snapshot.windowNumber
+                        ?? WindowServerWindow.number(for: state.frame, pid: app.pid, in: serverWindows))
                 entries[id] = Entry(element: element, pid: app.pid, snapshot: snapshot)
                 found.insert(id)
                 observeWindow(element, pid: app.pid, id: id)

@@ -131,21 +131,34 @@ struct DesignSettingsView: View {
     private var visibilitySettings: some View {
         GroupBox(L10n.tr("Tab Bar Visibility")) {
             VStack(alignment: .leading, spacing: 12) {
-                Toggle(L10n.tr("Hide tab bars automatically"), isOn: $model.autoHideTabBars)
-                    .onChange(of: model.autoHideTabBars) { model.tabBarPreferenceChanged() }
+                Toggle(
+                    L10n.tr("Hide tab bars automatically"),
+                    isOn: Binding(get: { model.autoHideTabBars }, set: { model.setAutoHideTabBars($0) }))
                 Text(
                     model.autoHideTabBars
                         ? L10n.tr("Windows use the full height. Tab bars float above them.")
                         : L10n.tr("Tab bars reserve space above their windows.")
                 )
                 .font(.caption).foregroundStyle(.secondary)
+                Toggle(
+                    L10n.tr("Keep fixed tab bars above all windows"),
+                    isOn: Binding(
+                        get: { !model.tabAppearance.keepFixedBarsBehindWindows },
+                        set: { model.setFixedBarsAboveWindows($0) })
+                ).disabled(model.autoHideTabBars)
+                Text(
+                    model.tabAppearance.keepFixedBarsBehindWindows
+                        ? L10n.tr(
+                            "Show Tabs brings them to the front for five seconds. They stay in front while you use them, then return behind app windows."
+                        )
+                        : L10n.tr("Fixed tab bars stay above app windows.")
+                )
+                .font(.caption).foregroundStyle(.secondary)
                 HStack {
-                    Toggle(L10n.tr("Show when the pointer reaches the top edge"), isOn: $model.revealTabsAtTopEdge)
-                        .disabled(!model.autoHideTabBars)
-                        .onChange(of: model.revealTabsAtTopEdge) {
-                            model.layoutChanged()
-                            model.saveLayout()
-                        }
+                    Toggle(
+                        L10n.tr("Show when the pointer reaches the top edge"),
+                        isOn: Binding(get: { model.revealTabsAtTopEdge }, set: { model.setRevealTabsAtTopEdge($0) })
+                    ).disabled(!model.autoHideTabBars)
                     Spacer()
                     Text(
                         (model.preferences.shortcuts[ShortcutManager.Action.showTabs.rawValue]

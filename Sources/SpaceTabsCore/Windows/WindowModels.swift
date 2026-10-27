@@ -29,12 +29,13 @@ public struct WindowSnapshot: Codable, Identifiable, Equatable, Sendable {
     public let identity: WindowIdentity
     public let state: OriginalWindowState
     public let incompatibility: String?
+    public let windowNumber: UInt32?
     public var label: String { "\(appName) · \(identity.title.isEmpty ? L10n.tr("Untitled") : identity.title)" }
     public var compatible: Bool { incompatibility == nil }
 
     public init(
         id: UUID, pid: Int32, appName: String, identity: WindowIdentity,
-        state: OriginalWindowState, incompatibility: String? = nil
+        state: OriginalWindowState, incompatibility: String? = nil, windowNumber: UInt32? = nil
     ) {
         self.id = id
         self.pid = pid
@@ -42,5 +43,6 @@ public struct WindowSnapshot: Codable, Identifiable, Equatable, Sendable {
         self.identity = identity
         self.state = state
         self.incompatibility = incompatibility
+        self.windowNumber = windowNumber
     }
 }

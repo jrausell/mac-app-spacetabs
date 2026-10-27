@@ -16,6 +16,7 @@ actor WindowManager: WindowLayoutAccess, WindowFocusAccess, WindowPresentationAc
     private var scopedDiscoveries = 0
     private var stopped = false
     private let locator = WindowProcessLocator()
+    private let windowServerCatalog = WindowServerCatalog()
     private var discoveryTiming = TimingStatistics()
     private let signposter = OSSignposter(subsystem: SpaceTabsIdentity.appBundleID, category: L10n.tr("Accessibility"))
 
@@ -48,9 +49,10 @@ actor WindowManager: WindowLayoutAccess, WindowFocusAccess, WindowPresentationAc
         }
         let work = apps.filter { processes?.contains($0.pid) ?? true }.map { ($0, session($0.pid)) }
         let interval = signposter.beginInterval("Discovery", id: signposter.makeSignpostID())
+        let serverWindows = await windowServerCatalog.windows()
         let results = await BoundedWorkPool.map(work, limit: 3) { app, worker in
             let started = ContinuousClock.now
-            let result = await worker.scan(apps: [app])
+            let result = await worker.scan(apps: [app], serverWindows: serverWindows)
             return (app.pid, result, started.duration(to: .now))
         }
         signposter.endInterval("Discovery", interval)

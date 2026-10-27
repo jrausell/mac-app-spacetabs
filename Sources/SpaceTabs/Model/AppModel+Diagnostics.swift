@@ -2,6 +2,13 @@ import AppKit
 import SpaceTabsCore
 
 extension AppModel {
+    var isLoadingTabs: Bool {
+        guard trusted, !demo, !managementSuspended, !configurationBlocked, !terminating else { return false }
+        if !hasCompletedDiscovery { return true }
+        let awaitingRecovery = !pendingTabs.isEmpty || pendingAutomaticProfile != nil
+        return awaitingRecovery && (scanning || refreshInFlight || busy)
+    }
+
     var applicationBundleURL: URL {
         if remoteSettings != nil {
             return Bundle.main.bundleURL.deletingLastPathComponent().deletingLastPathComponent()

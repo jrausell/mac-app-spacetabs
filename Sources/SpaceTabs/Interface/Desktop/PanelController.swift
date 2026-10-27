@@ -86,14 +86,14 @@ final class PanelController {
     }
 
     private func handleMouseEvent(_ event: NSEvent) {
-        guard visibility.autoHide else { return }
+        guard visibility.usesTemporaryReveal else { return }
         switch event.type {
         case .leftMouseDown, .rightMouseDown, .otherMouseDown:
             guard enabled, visibility.isVisible else { return }
             let pointer = NSEvent.mouseLocation
             let frames = tabPanels.filter { $0.isVisible && !$0.ignoresMouseEvents }.map(\.frame)
             visibility.pointerDown(at: pointer, interactiveFrames: frames)
-            if !visibility.isVisible {
+            if !visibility.isVisible || !visibility.isAboveWindows {
                 // A click at the screen edge must not reveal the bars again on
                 // mouse-up before the pointer has left that edge.
                 if let screen {
@@ -107,10 +107,12 @@ final class PanelController {
     }
 
     private func mouseMoved() {
-        guard enabled, visibility.autoHide, let screen else { return }
+        guard enabled, visibility.usesTemporaryReveal, let screen else { return }
         let pointer = NSEvent.mouseLocation
         let dragging = NSEvent.pressedMouseButtons != 0
-        let edge = revealAtTopEdge && TabBarVisibility.atTopEdge(pointer, screen: screen.frame, dragging: dragging)
+        let edge =
+            visibility.autoHide && revealAtTopEdge
+            && TabBarVisibility.atTopEdge(pointer, screen: screen.frame, dragging: dragging)
         if edge && !edgeLatched {
             edgeLatched = true
             visibility.reveal(at: now)
@@ -118,7 +120,8 @@ final class PanelController {
         } else if !edge {
             edgeLatched = false
         }
-        let inside = visibility.isVisible && tabPanels.contains { $0.frame.contains(pointer) }
+        let inside =
+            visibility.isVisible && visibility.isAboveWindows && tabPanels.contains { $0.frame.contains(pointer) }
         visibility.setHovered(inside || (visibility.isVisible && dragging), at: now)
         scheduleExpiry()
     }
@@ -141,16 +144,20 @@ final class PanelController {
             mouseMoved()
             visibility.expire(at: now)
             updateBarVisibility()
-            if !visibility.isVisible {
-                expiryTask = nil
-                scheduledDeadline = nil
-            }
+            scheduleExpiry()
         }
     }
     private var scheduledDeadline: TimeInterval?
 
     private func updateBarVisibility() {
-        for panel in tabPanels { setVisible(panel, visible: enabled && visibility.isVisible, animated: true) }
+        for panel in tabPanels {
+            panel.level = tabPanelLevel
+            setVisible(panel, visible: enabled && visibility.isVisible, animated: true)
+        }
+    }
+
+    private var tabPanelLevel: NSWindow.Level {
+        visibility.isAboveWindows ? .floating : NSWindow.Level(rawValue: NSWindow.Level.normal.rawValue - 1)
     }
 
     private func setVisible(_ panel: NSPanel, visible: Bool, animated: Bool) {
@@ -201,7 +208,9 @@ final class PanelController {
         if revealAtTopEdge != model.revealTabsAtTopEdge { edgeLatched = false }
         revealAtTopEdge = model.revealTabsAtTopEdge
         visibility.setAutoHide(model.autoHideTabBars, at: now)
-        if enabled && !model.autoHideTabBars { visibility.reveal(at: now) }
+        visibility.setKeepFixedBarsBehindWindows(model.tabAppearance.keepFixedBarsBehindWindows)
+        if enabled { visibility.showFixed() }
+        for panel in tabPanels { panel.level = tabPanelLevel }
         scheduleExpiry()
         let geometry = model.zoneGeometry(on: screen)
         guard let headers = LayoutEngine().columnHeaders(for: geometry) else {
@@ -210,6 +219,7 @@ final class PanelController {
         }
         if divider == nil {
             let panel = makePanel(floating: true)
+            panel.level = tabPanelLevel
             panel.hasShadow = true
             let handle = ColumnResizeHandleView(model: model)
             resizeHandle = handle
@@ -224,6 +234,7 @@ final class PanelController {
         if let frame = headers.rowHandle {
             if rowDivider == nil {
                 let panel = makePanel(floating: true)
+                panel.level = tabPanelLevel
                 let handle = ColumnResizeHandleView(model: model, rows: true)
                 rowResizeHandle = handle
                 panel.contentView = handle
@@ -269,6 +280,7 @@ final class PanelController {
             }
             let bar = bars[zone] ?? makePanel(floating: true)
             if bars[zone] == nil {
+                bar.level = tabPanelLevel
                 bar.contentView = TabBarHostingView(rootView: TabBarView(model: model, zone: zone))
                 bars[zone] = bar
             }

@@ -5,7 +5,12 @@ import SpaceTabsCore
 @MainActor final class RemoteSettingsModel {
     private let model: AppModel
     private var connection: SettingsChannel?
+    private var sendPacket: ((SettingsPacket) -> Void)?
     private(set) var state: SettingsState?
+    init(model: AppModel, sendPacket: @escaping (SettingsPacket) -> Void) {
+        self.model = model
+        self.sendPacket = sendPacket
+    }
     init(model: AppModel, path: String) throws {
         self.model = model
         let managerURL = Bundle.main.bundleURL.deletingLastPathComponent().deletingLastPathComponent()
@@ -16,13 +21,14 @@ import SpaceTabsCore
             packet: { [weak self] packet in
                 DispatchQueue.main.async { self?.receive(packet) }
             }, disconnected: { _ in Task { @MainActor in NSApp.terminate(nil) } })
-        connection?.send(SettingsPacket(kind: .subscribe))
+        sendPacket = { [weak connection] packet in connection?.send(packet) }
+        sendPacket?(SettingsPacket(kind: .subscribe))
     }
     func send(_ command: SettingsCommand) {
         guard let data = try? JSONEncoder().encode(command), data.count <= SettingsProtocol.messageLimit else { return }
-        connection?.send(SettingsPacket(kind: .command, data: data))
+        sendPacket?(SettingsPacket(kind: .command, data: data))
     }
-    private func receive(_ packet: SettingsPacket) {
+    func receive(_ packet: SettingsPacket) {
         switch packet.kind {
         case .state:
             guard packet.data.count <= SettingsProtocol.messageLimit,

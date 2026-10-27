@@ -4,6 +4,61 @@ import Testing
 
 @testable import SpaceTabs
 
+@MainActor @Test func backgroundFixedBarsAreNotRaisedByRoutineWindowManagement() {
+    let model = AppModel()
+    var reveals = 0
+    model.showTabBars = { reveals += 1 }
+    model.autoHideTabBars = false
+    model.tabAppearance.keepFixedBarsBehindWindows = true
+    model.showTabBarsAfterInteraction()
+    #expect(reveals == 0)
+    model.handleShortcut(.showTabs)
+    #expect(reveals == 1)
+    model.tabAppearance.keepFixedBarsBehindWindows = false
+    model.showTabBarsAfterInteraction()
+    #expect(reveals == 2)
+    model.autoHideTabBars = true
+    model.tabAppearance.keepFixedBarsBehindWindows = true
+    model.showTabBarsAfterInteraction()
+    #expect(reveals == 3)
+}
+
+@MainActor @Test func tabVisibilityEditsSendBeforeAnIncomingSnapshotAndDoNotEchoIt() throws {
+    let manager = AppModel()
+    manager.configurationBlocked = true
+    let helper = AppModel()
+    var packets: [SettingsPacket] = []
+    let remote = RemoteSettingsModel(model: helper, sendPacket: { packets.append($0) })
+    helper.remoteSettings = remote
+    let initial = SettingsPacket(kind: .state, data: try JSONEncoder().encode(SettingsState(manager)))
+    remote.receive(initial)
+
+    helper.setAutoHideTabBars(false)
+    // A manager update can arrive before SwiftUI runs its next change callbacks.
+    remote.receive(initial)
+    try #require(packets.count == 1)
+    let command = try JSONDecoder().decode(SettingsCommand.self, from: packets[0].data)
+    guard case .layout(let preferences) = command else {
+        Issue.record("Expected a layout command")
+        return
+    }
+    #expect(!preferences.autoHide)
+    let host = SettingsHost(model: manager)
+    defer { manager.reflowTask?.cancel() }
+    host.receive(packets[0].data)
+    remote.receive(SettingsPacket(kind: .state, data: try JSONEncoder().encode(SettingsState(manager))))
+    #expect(!manager.autoHideTabBars && !helper.autoHideTabBars)
+    #expect(packets.count == 1)
+
+    helper.setRevealTabsAtTopEdge(true)
+    try #require(packets.count == 2)
+    host.receive(packets[1].data)
+    remote.receive(SettingsPacket(kind: .state, data: try JSONEncoder().encode(SettingsState(manager))))
+    #expect(manager.revealTabsAtTopEdge && helper.revealTabsAtTopEdge)
+    #expect(!helper.autoHideTabBars && packets.count == 2)
+    #expect(helper.reflowTask == nil && helper.operationTask == nil)
+}
+
 @MainActor @Test func settingsSnapshotPreservesSelectionsAndPreferencesWithoutStartingManager() throws {
     let host = AppModel()
     let a = UUID()
@@ -13,6 +68,8 @@ import Testing
     host.ratio = 0.22
     host.autoHideTabBars = false
     host.tabAppearance.dragBorderColor = TabColor(0.2, 0.8, 0.3)
+    host.tabAppearance.backgroundOpacity = 0.42
+    host.tabAppearance.keepFixedBarsBehindWindows = true
     host.workspacePresentationStatus = "Recovered"
     host.assignmentZone = .b
     host.assignmentRequest = 4
@@ -27,6 +84,46 @@ import Testing
     #expect(ui.workspacePresentationStatus == "Recovered")
     #expect(ui.assignmentZone == .b && ui.assignmentRequest == 4)
     #expect(!ui.tabSelectionRunner.isPending)
+}
+
+@MainActor @Test func fixedBarLayerPreferenceTravelsThroughSettingsAndCanBeDisabled() throws {
+    let manager = AppModel()
+    manager.configurationBlocked = true
+    let host = SettingsHost(model: manager)
+    defer { manager.appearanceSaveTask?.cancel() }
+    let helper = AppModel()
+    var packets: [SettingsPacket] = []
+    let remote = RemoteSettingsModel(model: helper, sendPacket: { packets.append($0) })
+    helper.remoteSettings = remote
+    remote.receive(SettingsPacket(kind: .state, data: try JSONEncoder().encode(SettingsState(manager))))
+    for enabled in [true, false] {
+        let count = packets.count
+        helper.setFixedBarsAboveWindows(enabled)
+        try #require(packets.count == count + 1)
+        host.receive(try #require(packets.last).data)
+        remote.receive(SettingsPacket(kind: .state, data: try JSONEncoder().encode(SettingsState(manager))))
+        #expect(manager.tabAppearance.keepFixedBarsBehindWindows == !enabled)
+        #expect(helper.tabAppearance.keepFixedBarsBehindWindows == !enabled)
+        #expect(packets.count == count + 1)
+    }
+    #expect(helper.operationTask == nil && helper.appearanceSaveTask == nil)
+}
+
+@MainActor @Test func backgroundOpacityUsesTheAppearanceCommandAndRejectsInvalidUpdates() throws {
+    let manager = AppModel()
+    manager.configurationBlocked = true
+    let host = SettingsHost(model: manager)
+    defer { manager.appearanceSaveTask?.cancel() }
+    var appearance = manager.tabAppearance
+    appearance.backgroundOpacity = 0.27
+    try host.receive(JSONEncoder().encode(SettingsCommand.appearance(appearance)))
+    let helper = AppModel()
+    let state = try JSONDecoder().decode(SettingsState.self, from: JSONEncoder().encode(SettingsState(manager)))
+    state.apply(to: helper)
+    #expect(helper.tabAppearance.backgroundOpacity == 0.27)
+    appearance.backgroundOpacity = 1.1
+    try host.receive(JSONEncoder().encode(SettingsCommand.appearance(appearance)))
+    #expect(manager.tabAppearance.backgroundOpacity == 0.27)
 }
 
 @MainActor @Test func settingsCommandsAreDataAndLayoutBoundsRemainValidated() throws {

@@ -63,6 +63,29 @@ extension AppModel {
         layoutPreferenceChanged()
     }
 
+    func setAutoHideTabBars(_ enabled: Bool) {
+        autoHideTabBars = enabled
+        tabBarPreferenceChanged()
+    }
+
+    func setRevealTabsAtTopEdge(_ enabled: Bool) {
+        revealTabsAtTopEdge = enabled
+        if sendLayoutPreferences() { return }
+        layoutChanged()
+        saveLayout()
+    }
+
+    func setFixedBarsAboveWindows(_ enabled: Bool) {
+        tabAppearance.keepFixedBarsBehindWindows = !enabled
+        appearancePreferenceChanged()
+    }
+
+    func showTabBarsAfterInteraction() {
+        // Background bars are raised by Show Tabs, not routine assignments or reflows.
+        guard autoHideTabBars || !tabAppearance.keepFixedBarsBehindWindows else { return }
+        showTabBars()
+    }
+
     func managedFrames(tabs: TabManager) throws -> [UUID: CGRect] {
         var frames: [UUID: CGRect] = [:]
         for zone in Zone.allCases {

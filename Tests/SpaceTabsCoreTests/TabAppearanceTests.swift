@@ -35,6 +35,8 @@ import Testing
     var appearance = TabAppearance()
     appearance.mode = .dark
     appearance.backgroundOverride = TabColor(0.2, 0.1, 0.4)
+    appearance.backgroundOpacity = 0.35
+    appearance.keepFixedBarsBehindWindows = false
     appearance.colorA = TabColor(0.8, 0.5, 0.2)
     appearance.dragBorderColor = TabColor(0.2, 0.7, 0.4)
     var layout = PersistedLayout(tabAppearance: appearance)
@@ -47,6 +49,33 @@ import Testing
     #expect(legacy?.tabAppearance == TabAppearance())
 }
 
+@Test func tabBackgroundOpacityDefaultsForOlderThemesAndRejectsInvalidValues() throws {
+    let appearance = TabAppearance()
+    var object = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(appearance)) as? [String: Any])
+    object.removeValue(forKey: "backgroundOpacity")
+    let legacy = try JSONDecoder().decode(TabAppearance.self, from: JSONSerialization.data(withJSONObject: object))
+    #expect(legacy.backgroundOpacity == 0.9 && legacy == appearance)
+
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent("SpaceTabsOpacity-\(UUID()).json")
+    defer { try? FileManager.default.removeItem(at: url) }
+    let store = PersistenceStore(url: url)
+    for opacity in [0.0, 0.35, 1.0] {
+        var layout = PersistedLayout()
+        layout.tabAppearance.backgroundOpacity = opacity
+        try store.save(layout)
+        #expect(try store.load()?.tabAppearance.backgroundOpacity == opacity)
+    }
+    for opacity in [-0.01, 1.01, Double.nan, .infinity] {
+        var invalid = appearance
+        invalid.backgroundOpacity = opacity
+        #expect(!invalid.isValid)
+        #expect(throws: (any Error).self) { try store.save(PersistedLayout(tabAppearance: invalid)) }
+    }
+    object["backgroundOpacity"] = 1.5
+    let invalid = try JSONDecoder().decode(TabAppearance.self, from: JSONSerialization.data(withJSONObject: object))
+    #expect(!invalid.isValid)
+}
+
 @Test func existingThemesKeepTheirColorsAndDefaultToWhiteDragBorders() throws {
     var appearance = TabAppearance()
     appearance.backgroundOverride = TabColor(0.3, 0.2, 0.1)
@@ -54,8 +83,10 @@ import Testing
     let data = try JSONEncoder().encode(appearance)
     var object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
     object.removeValue(forKey: "dragBorderColor")
+    object.removeValue(forKey: "keepFixedBarsBehindWindows")
     let legacyData = try JSONSerialization.data(withJSONObject: object)
     #expect(try JSONDecoder().decode(TabAppearance.self, from: legacyData) == appearance)
+    #expect(appearance.keepFixedBarsBehindWindows)
     for color in [
         TabColor.white, .black, TabColor(0.5, 0.5, 0.5), TabColor(1, 0, 0), TabColor(0, 1, 0), TabColor(0, 0, 1),
     ] {
