@@ -4,6 +4,108 @@ import Testing
 
 @testable import SpaceTabs
 
+@MainActor @Test func updatingAProfileKeepsItsLaunchChoiceWithoutOpeningApps() throws {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent("SpaceTabsProfileSave-\(UUID())")
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let store = UserPreferencesStore(url: directory.appendingPathComponent("preferences.json"))
+    let model = AppModel(preferencesStore: store)
+    let profile = WorkspaceProfile(name: "Work", layout: PersistedLayout(), zoneNames: [:], openAssignedApps: true)
+    model.preferences.profiles = [profile]
+    model.ratio = 0.4
+    model.saveProfile(name: "Updated Work", replacing: profile.id)
+    let restored = try #require(store.load().profiles.first)
+    #expect(restored.id == profile.id && restored.name == "Updated Work")
+    #expect(restored.openAssignedApps && restored.layout.ratio == 0.4)
+    #expect(model.profileLaunchTask == nil && model.launchingApplications.isEmpty)
+}
+
+@MainActor @Test func profileLaunchOptionUsesTypedSettingsAndCancellationPreventsQueuedAppLaunches() async throws {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent("SpaceTabsProfileCommand-\(UUID())")
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let store = UserPreferencesStore(url: directory.appendingPathComponent("preferences.json"))
+    let model = AppModel(preferencesStore: store)
+    model.trusted = true
+    let rule = ApplicationAssignment(
+        url: URL(fileURLWithPath: "/nonexistent/SpaceTabsTestApp.app"), name: "Test app", bundleID: "test.profile.app",
+        zone: .b)
+    var profile = WorkspaceProfile(
+        name: "Work", layout: PersistedLayout(applicationAssignments: [rule]), zoneNames: [:])
+    profile.openAssignedApps = true
+    model.preferences.profiles = [profile]
+    model.applicationAssignments = [rule]
+    model.openAssignedApps(for: profile)
+    model.profileLaunchTask?.cancel()
+    await model.profileLaunchTask?.value
+    #expect(model.catalogMessage == nil && model.launchingApplications.isEmpty)
+    SettingsHost(model: model).receive(try JSONEncoder().encode(SettingsCommand.profileOpenApps(profile.id, false)))
+    #expect(!model.preferences.profiles[0].openAssignedApps)
+    #expect(try !store.load().profiles[0].openAssignedApps)
+    model.preferencesBlocked = true
+    SettingsHost(model: model).receive(try JSONEncoder().encode(SettingsCommand.profileOpenApps(profile.id, true)))
+    #expect(!model.preferences.profiles[0].openAssignedApps)
+    let helper = AppModel()
+    let snapshot = try JSONDecoder().decode(SettingsState.self, from: JSONEncoder().encode(SettingsState(model)))
+    snapshot.apply(to: helper)
+    #expect(!helper.preferences.profiles[0].openAssignedApps)
+    #expect(helper.profileLaunchTask == nil && helper.operationTask == nil)
+}
+
+@MainActor @Test func failedProfileAppPathCompletesWithoutLaunchingAndProfileAvailabilityRespectsPause() {
+    let model = AppModel()
+    var completed = false
+    model.launchApplication(
+        InstalledApplication(url: URL(fileURLWithPath: "/nonexistent/Test.app"), name: "Test", bundleID: "test.app"),
+        activates: false
+    ) { completed = true }
+    #expect(completed && model.launchingApplications.isEmpty && model.catalogMessage != nil)
+    model.trusted = true
+    #expect(model.canApplyProfile)
+    model.paused = true
+    #expect(!model.canApplyProfile)
+    model.paused = false
+    model.busy = true
+    #expect(!model.canApplyProfile)
+}
+
+@MainActor @Test func clickingBarsRevealsAllByDefaultAndTheSettingsSwitchDoesNotDisableShowTabs() throws {
+    let manager = AppModel()
+    manager.configurationBlocked = true
+    manager.autoHideTabBars = false
+    let window = UUID()
+    manager.tabs.assign(window, to: .b)
+    let selections = manager.tabs.selected
+    var reveals = 0
+    manager.showTabBars = { reveals += 1 }
+    manager.tabBarClicked()
+    #expect(reveals == 1)
+
+    let host = SettingsHost(model: manager)
+    defer { manager.appearanceSaveTask?.cancel() }
+    let helper = AppModel()
+    var packets: [SettingsPacket] = []
+    let remote = RemoteSettingsModel(model: helper, sendPacket: { packets.append($0) })
+    helper.remoteSettings = remote
+    remote.receive(SettingsPacket(kind: .state, data: try JSONEncoder().encode(SettingsState(manager))))
+    helper.setRevealAllBarsOnClick(false)
+    host.receive(try #require(packets.last).data)
+    remote.receive(SettingsPacket(kind: .state, data: try JSONEncoder().encode(SettingsState(manager))))
+    #expect(!helper.tabAppearance.revealAllBarsOnClick)
+    manager.tabBarClicked()
+    #expect(reveals == 1)
+    manager.handleShortcut(.showTabs)
+    #expect(reveals == 2)
+
+    helper.setRevealAllBarsOnClick(true)
+    host.receive(try #require(packets.last).data)
+    manager.tabBarClicked()
+    #expect(reveals == 3)
+    manager.paused = true
+    manager.tabBarClicked()
+    #expect(reveals == 3)
+    #expect(manager.tabs.selected == selections)
+    #expect(manager.operationTask == nil && helper.operationTask == nil)
+}
+
 @MainActor @Test func backgroundFixedBarsAreNotRaisedByRoutineWindowManagement() {
     let model = AppModel()
     var reveals = 0

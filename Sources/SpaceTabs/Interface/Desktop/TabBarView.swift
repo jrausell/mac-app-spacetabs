@@ -28,7 +28,7 @@ struct TabBarView: View {
                 minWidth: 20, maxWidth: model.preferences.zoneNames[zone, default: ""].isEmpty ? 20 : 110)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 4) {
-                    if model.isLoadingTabs {
+                    if model.isLoadingTabs(in: zone) {
                         HStack(spacing: 6) {
                             ProgressView().controlSize(.small)
                             Text(L10n.tr("Loading tabs…")).font(.system(size: 11))
@@ -67,7 +67,8 @@ struct TabBarView: View {
                                 model.busy || model.scanning)
                         }
                     }
-                    ForEach(model.isLoadingTabs ? [] : model.pendingApplicationAssignments(in: zone)) { rule in
+                    ForEach(model.isLoadingTabs(in: zone) ? [] : model.pendingApplicationAssignments(in: zone)) {
+                        rule in
                         Button {
                             model.launchApplication(
                                 InstalledApplication(url: rule.url, name: rule.name, bundleID: rule.bundleID))
@@ -94,7 +95,7 @@ struct TabBarView: View {
                     }
                     if model.tabs.windows[zone, default: []].isEmpty
                         && model.pendingApplicationAssignments(in: zone).isEmpty
-                        && !model.isLoadingTabs
+                        && !model.isLoadingTabs(in: zone)
                     {
                         Text(
                             model.pendingTabs.contains(where: { $0.zone == zone })

@@ -80,6 +80,16 @@ extension AppModel {
         appearancePreferenceChanged()
     }
 
+    func setRevealAllBarsOnClick(_ enabled: Bool) {
+        tabAppearance.revealAllBarsOnClick = enabled
+        appearancePreferenceChanged()
+    }
+
+    func tabBarClicked() {
+        guard tabAppearance.revealAllBarsOnClick, !managementSuspended, !terminating else { return }
+        showTabBars()
+    }
+
     func showTabBarsAfterInteraction() {
         // Background bars are raised by Show Tabs, not routine assignments or reflows.
         guard autoHideTabBars || !tabAppearance.keepFixedBarsBehindWindows else { return }

@@ -2,6 +2,17 @@
 
 SpaceTabs currently manages zones on **one selected display at a time**. You can save different profiles for different screens or display setups, but you cannot run an independent active profile on each monitor simultaneously.
 
+## Save and switch between setups
+
+1. In **Design**, choose the display, template, sizes, and appearance for your first setup.
+2. In **Apps**, assign apps to zones. **All Apps** creates app rules, including for closed apps. **Open Windows** lets you assign a specific window, useful when other browser windows should stay on another display.
+3. Open **Profiles**, enter a name such as `Work`, and select **Save Profile**.
+4. If desired, enable **Open closed assigned apps when switching manually** on that profile. This requires saved app rules; window-only snapshots do not launch apps.
+5. Change your layout and assignments, then save another named profile, such as `Personal`.
+6. Choose a saved name from **SpaceTabs → Profiles** in the status menu or application menu. You can also select **Apply** in Settings → Profiles, or find the profile through Search.
+
+Manual switching can open closed assigned apps when its checkbox is enabled. Apps open in the background and their compatible windows join their assigned zones as they appear. It does not recreate specific documents or browser pages, close other apps, or create a separate macOS desktop. Unlisted windows retain their current zone. Saving or updating a profile does not itself open apps.
+
 ## Put your zones on a second monitor
 
 1. Connect the monitor and open **SpaceTabs Settings → Design → Templates and Sizes**.

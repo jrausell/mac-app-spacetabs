@@ -149,6 +149,8 @@ extension AppModel {
         }
         let revision = presentationRevision
         perform {
+            self.restoringTabZones = Set(self.pendingTabs.filter { matches[$0.id] != nil }.map(\.zone))
+            defer { self.restoringTabZones.removeAll() }
             var next = self.tabs
             var originalStates = self.originals
             for saved in self.pendingTabs {

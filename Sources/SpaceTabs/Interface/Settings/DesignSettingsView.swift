@@ -154,6 +154,11 @@ struct DesignSettingsView: View {
                         : L10n.tr("Fixed tab bars stay above app windows.")
                 )
                 .font(.caption).foregroundStyle(.secondary)
+                Toggle(
+                    L10n.tr("Show all tab bars when clicking a tab or group"),
+                    isOn: Binding(
+                        get: { model.tabAppearance.revealAllBarsOnClick },
+                        set: { model.setRevealAllBarsOnClick($0) }))
                 HStack {
                     Toggle(
                         L10n.tr("Show when the pointer reaches the top edge"),

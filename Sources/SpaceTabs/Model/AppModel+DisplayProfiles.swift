@@ -60,7 +60,7 @@ extension AppModel {
             trusted, !terminating, !configurationBlocked, !preferencesBlocked
         else { return true }
         pendingAutomaticProfile = nil
-        applyProfile(id)
+        applyProfile(id, automatically: true)
         return busy
     }
 }

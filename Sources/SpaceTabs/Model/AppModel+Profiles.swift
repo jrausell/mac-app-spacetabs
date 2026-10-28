@@ -2,6 +2,11 @@ import AppKit
 import SpaceTabsCore
 
 extension AppModel {
+    var canApplyProfile: Bool {
+        trusted && !configurationBlocked && !preferencesBlocked && !busy && !scanning && !resizingColumns
+            && !managementSuspended && !demo && !terminating
+    }
+
     func saveProfile(name: String, replacing id: UUID? = nil) {
         if sendToManager(.saveProfile(name, id)) { return }
         guard !busy, !resizingColumns, !preferencesBlocked, !configurationBlocked else { return }
@@ -19,7 +24,8 @@ extension AppModel {
             template: layoutTemplate, rowRatio: rowRatio)
         let profile = WorkspaceProfile(
             id: id ?? UUID(), name: name.trimmingCharacters(in: .whitespacesAndNewlines), layout: layout,
-            zoneNames: preferences.zoneNames)
+            zoneNames: preferences.zoneNames,
+            openAssignedApps: preferences.profiles.first(where: { $0.id == id })?.openAssignedApps ?? false)
         if let id, let index = value.profiles.firstIndex(where: { $0.id == id }) {
             value.profiles[index] = profile
         } else {
@@ -34,12 +40,21 @@ extension AppModel {
         value.displayProfiles = value.displayProfiles.filter { $0.value != id }
         commitPreferences(value)
     }
-    func applyProfile(_ id: UUID) {
-        if sendToManager(.applyProfile(id)) { return }
-        guard let profile = preferences.profiles.first(where: { $0.id == id }), !configurationBlocked,
-            !preferencesBlocked,
-            !busy, !scanning, !resizingColumns, !managementSuspended, !demo
+    func setProfileOpenAssignedApps(_ id: UUID, enabled: Bool) {
+        if sendToManager(.profileOpenApps(id, enabled)) { return }
+        guard !preferencesBlocked, !terminating,
+            let index = preferences.profiles.firstIndex(where: { $0.id == id })
         else { return }
+        var value = preferences
+        value.profiles[index].openAssignedApps = enabled
+        commitPreferences(value)
+    }
+
+    func applyProfile(_ id: UUID, automatically: Bool = false) {
+        if sendToManager(.applyProfile(id)) { return }
+        guard canApplyProfile, let profile = preferences.profiles.first(where: { $0.id == id })
+        else { return }
+        profileLaunchTask?.cancel()
         reflowTask?.cancel()
         pendingAutomaticProfile = nil
         noteUserInteraction()
@@ -66,6 +81,8 @@ extension AppModel {
             self.applicationAssignments = layout.applicationAssignments
         }
         perform {
+            self.restoringTabZones = Set(profile.layout.template.zones)
+            defer { self.restoringTabZones.removeAll() }
             install(profile.layout)
             let urls = Dictionary(
                 uniqueKeysWithValues: Set(self.windows.map(\.pid)).compactMap { pid in
@@ -101,9 +118,9 @@ extension AppModel {
                 self.appliedScreenID = self.selectedScreenID
                 self.appliedAutoHideTabBars = self.autoHideTabBars
                 if !self.activeZones.contains(self.activeZone) { self.activeZone = .b }
-                self.message = L10n.tr(
-                    "Profile “\(profile.name)” applied. Closed apps will be assigned when you open them.")
+                self.message = L10n.tr("Profile “\(profile.name)” applied.")
                 self.showTabBarsAfterInteraction()
+                self.openAssignedApps(for: profile, automatically: automatically)
             } catch {
                 install(oldLayout)
                 self.pendingTabs = oldPending

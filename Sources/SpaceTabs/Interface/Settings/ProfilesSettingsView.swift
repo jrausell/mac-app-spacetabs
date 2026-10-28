@@ -34,7 +34,7 @@ struct ProfilesSettingsView: View {
                     }
                     Text(
                         L10n.tr(
-                            "Saves the template, sizes, display, names, appearance, tabs, and app assignments. Closed apps wait until you open them. Windows not assigned in the profile keep their current zone."
+                            "Saves the template, sizes, display, names, appearance, tabs, and app assignments. Choose below whether each profile opens closed assigned apps. Unlisted windows keep their current zone."
                         )
                     )
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
@@ -64,10 +64,22 @@ struct ProfilesSettingsView: View {
                                     "\(profile.layout.applicationAssignments.count) apps · \(profile.layout.tabs.count) windows"
                                 )
                             ).font(.caption).foregroundStyle(.secondary)
+                            Toggle(
+                                L10n.tr("Open closed assigned apps when switching manually"),
+                                isOn: Binding(
+                                    get: { profile.openAssignedApps },
+                                    set: { model.setProfileOpenAssignedApps(profile.id, enabled: $0) })
+                            )
+                            .toggleStyle(.checkbox).font(.caption)
+                            .disabled(model.preferencesBlocked || model.busy)
+                            .help(
+                                L10n.tr(
+                                    "Uses saved app assignments. Automatic display profiles keep closed apps closed. Browser tabs and documents are not recreated."
+                                ))
                         }
                         Spacer()
                         Button(L10n.tr("Apply")) { model.applyProfile(profile.id) }
-                            .disabled(model.busy || model.scanning || model.managementSuspended || model.demo)
+                            .disabled(!model.canApplyProfile)
                         Menu {
                             Button(
                                 model.preferences.displayProfiles[model.displayConfigurationKey] == profile.id

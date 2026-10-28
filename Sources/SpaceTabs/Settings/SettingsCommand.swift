@@ -31,6 +31,7 @@ enum SettingsCommand: Codable {
     case zoneName(Zone, String)
     case saveProfile(String, UUID?)
     case applyProfile(UUID)
+    case profileOpenApps(UUID, Bool)
     case deleteProfile(UUID)
     case login(Bool)
     case loginSettings, loginStatus

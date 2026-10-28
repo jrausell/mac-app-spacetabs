@@ -34,6 +34,7 @@ extension AppModel {
     }
 
     func suspendForDesktopChange(_ reason: String) {
+        profileLaunchTask?.cancel()
         displayProfileTask?.cancel()
         displayProfileTask = nil
         pendingAutomaticProfile = nil
@@ -91,6 +92,7 @@ extension AppModel {
 
     func prepareForTermination() async -> [String] {
         terminating = true
+        profileLaunchTask?.cancel()
         tabSelectionRunner.cancel()
         await tabSelectionRunner.wait()
         appearanceSaveTask?.cancel()

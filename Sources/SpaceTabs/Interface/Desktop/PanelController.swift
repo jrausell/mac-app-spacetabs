@@ -24,6 +24,7 @@ final class PanelController {
     private var visibility = TabBarVisibility()
     private var screen: NSScreen?
     private var enabled = false
+    private var tabBarClicked: () -> Void = {}
     private var menuTracking = false
     private var tabDragging = false
     private var edgeLatched = false
@@ -86,6 +87,11 @@ final class PanelController {
     }
 
     private func handleMouseEvent(_ event: NSEvent) {
+        if enabled, event.type == .leftMouseDown, let window = event.window,
+            bars.values.contains(where: { $0 === window })
+        {
+            tabBarClicked()
+        }
         guard visibility.usesTemporaryReveal else { return }
         switch event.type {
         case .leftMouseDown, .rightMouseDown, .otherMouseDown:
@@ -203,6 +209,7 @@ final class PanelController {
 
     func update(model: AppModel, screen: NSScreen) {
         self.screen = screen
+        tabBarClicked = { [weak model] in model?.tabBarClicked() }
         visibleZones = model.activeZones
         enabled = !model.managementSuspended && !model.terminating
         if revealAtTopEdge != model.revealTabsAtTopEdge { edgeLatched = false }

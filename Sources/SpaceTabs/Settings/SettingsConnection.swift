@@ -159,6 +159,7 @@ import SpaceTabsCore
         case .zoneName(let zone, let name): model.setZoneName(zone, name: name)
         case .saveProfile(let name, let id): model.saveProfile(name: name, replacing: id)
         case .applyProfile(let id): model.applyProfile(id)
+        case .profileOpenApps(let id, let enabled): model.setProfileOpenAssignedApps(id, enabled: enabled)
         case .deleteProfile(let id): model.deleteProfile(id)
         case .login(let enabled): model.setLoginEnabled(enabled)
         case .loginSettings: model.openLoginSettings()

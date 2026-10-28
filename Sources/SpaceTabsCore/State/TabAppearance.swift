@@ -50,13 +50,15 @@ public struct TabAppearance: Codable, Equatable, Sendable {
     public var backgroundOverride: TabColor?
     public var backgroundOpacity = 0.9
     public var keepFixedBarsBehindWindows = true
+    public var revealAllBarsOnClick = true
     public var colorA = TabColor(1, 0.48, 0.05)
     public var colorB = TabColor(0.12, 0.46, 0.95)
     public var colorC = TabColor(0.15, 0.65, 0.3)
     public var dragBorderColor: TabColor = .white
     public init() {}
     private enum CodingKeys: String, CodingKey {
-        case mode, backgroundOverride, backgroundOpacity, keepFixedBarsBehindWindows, colorA, colorB, colorC,
+        case mode, backgroundOverride, backgroundOpacity, keepFixedBarsBehindWindows, revealAllBarsOnClick, colorA,
+            colorB, colorC,
             dragBorderColor
     }
     public init(from decoder: any Decoder) throws {
@@ -65,6 +67,7 @@ public struct TabAppearance: Codable, Equatable, Sendable {
         backgroundOverride = try values.decodeIfPresent(TabColor.self, forKey: .backgroundOverride)
         backgroundOpacity = try values.decodeIfPresent(Double.self, forKey: .backgroundOpacity) ?? 0.9
         keepFixedBarsBehindWindows = try values.decodeIfPresent(Bool.self, forKey: .keepFixedBarsBehindWindows) ?? true
+        revealAllBarsOnClick = try values.decodeIfPresent(Bool.self, forKey: .revealAllBarsOnClick) ?? true
         colorA = try values.decode(TabColor.self, forKey: .colorA)
         colorB = try values.decode(TabColor.self, forKey: .colorB)
         colorC = try values.decodeIfPresent(TabColor.self, forKey: .colorC) ?? TabColor(0.15, 0.65, 0.3)

@@ -266,7 +266,7 @@
 "Profile linked to these displays. It will apply at startup or when they reconnect." = "Perfil vinculado a estas pantallas. Se aplicará al iniciar o cuando se vuelvan a conectar.";
 "Profile name" = "Nombre del perfil";
 "Profile · {0}" = "Perfil · {0}";
-"Profile “{0}” applied. Closed apps will be assigned when you open them." = "Perfil «{0}» aplicado. Las aplicaciones cerradas se asignarán cuando las abras.";
+"Profile “{0}” applied." = "Perfil «{0}» aplicado.";
 "Profile “{0}” saved." = "Perfil «{0}» guardado.";
 "Profiles" = "Perfiles";
 "Quit Anyway" = "Salir de todos modos";
@@ -313,7 +313,7 @@
 "Saved session · waiting to check windows" = "Sesión guardada · pendiente de comprobar ventanas";
 "Saved session · {0} of {1} windows found" = "Sesión guardada · {0} de {1} ventanas identificadas";
 "Saved session · {0} tabs · waiting for Accessibility access" = "Sesión guardada · {0} pestañas · esperando acceso de Accesibilidad";
-"Saves the template, sizes, display, names, appearance, tabs, and app assignments. Closed apps wait until you open them. Windows not assigned in the profile keep their current zone." = "Guarda la plantilla, tamaños, pantalla, nombres, apariencia, pestañas y asignaciones. Las aplicaciones cerradas esperan a que las abras. Las ventanas no asignadas en el perfil conservan su zona actual.";
+"Saves the template, sizes, display, names, appearance, tabs, and app assignments. Choose below whether each profile opens closed assigned apps. Unlisted windows keep their current zone." = "Guarda la plantilla, los tamaños, la pantalla, los nombres, la apariencia, las pestañas y las asignaciones. Elige debajo si cada perfil abre las aplicaciones asignadas que estén cerradas. Las ventanas no incluidas conservan su zona.";
 "Scanning" = "Buscando";
 "Search" = "Buscar";
 "Search Tabs or Profiles · ⌃⌥Space" = "Buscar pestañas o perfiles · ⌃⌥Espacio";
@@ -490,3 +490,8 @@
 "Top {0}% · Bottom {1}%" = "Arriba {0}% · Abajo {1}%";
 "Left {0}% · Right {1}%" = "Izquierda {0}% · Derecha {1}%";
 "Could not resize {0}. The previous layout settings were restored. {1}" = "No se pudo redimensionar {0}. Se han restaurado los ajustes de la distribución anterior. {1}";
+"Show all tab bars when clicking a tab or group" = "Mostrar todas las barras al hacer clic en una pestaña o grupo";
+"No saved profiles. Save one in Settings → Profiles." = "No hay perfiles guardados. Guarda uno en Ajustes → Perfiles.";
+"Open closed assigned apps when switching manually" = "Abrir las aplicaciones asignadas cerradas al cambiar manualmente";
+"Uses saved app assignments. Automatic display profiles keep closed apps closed. Browser tabs and documents are not recreated." = "Utiliza las asignaciones guardadas. Los cambios automáticos de pantalla no abren aplicaciones cerradas. No se recrean pestañas del navegador ni documentos.";
+"{0} opened. Waiting for its assigned windows." = "{0} se ha abierto. Esperando sus ventanas asignadas.";

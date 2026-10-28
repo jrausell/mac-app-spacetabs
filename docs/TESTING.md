@@ -40,6 +40,7 @@ Use a disposable test document and normal app windows. Close both SpaceTabs proc
 - Switch each group's tabs and check that the other groups keep their selection and geometry.
 - Place two windows from the same app in different zones and verify that the requested window receives focus.
 - Click tabs rapidly, open Settings during a pending action, and check that an older action does not steal focus.
+- With fixed bars behind windows, click a visible group label, empty bar area, and app tab. All bars should temporarily come forward while the original tab click, double-click, or drag still works. Turn off **Show all tab bars when clicking a tab or group** and verify these clicks no longer raise other bars; Show Tabs should still work. Click an unmanaged app or a resize handle and verify neither triggers the click reveal.
 - Select SpaceTabs through the Dock and Command-Tab. All selected windows should come forward and B should receive final focus.
 - Select SpaceTabs Settings through the same controls. It should open Settings without restoring the workspace.
 
@@ -48,7 +49,7 @@ Use a disposable test document and normal app windows. Close both SpaceTabs proc
 - Check all three templates, both resize handles, and minimum proportions.
 - Check fixed bars and auto-hide bars with the macOS menu bar and Dock set to visible and auto-hidden.
 - Leave **Keep fixed tab bars above all windows** unchecked, cover a bar with an unmanaged app, and verify the app stays unobstructed. Show Tabs should raise bars and resize handles without activating SpaceTabs, then lower them after five seconds without hiding them. Hover, context menus, and tab dragging should hold the reveal; an outside click should lower it immediately. Changing appearance or layout during a reveal must not restart its timer. Check the setting and verify floating behavior; also check pause/resume and auto-hide.
-- Restart with saved tabs and verify the bars show **Loading tabs…** during discovery and recovery, then show restored windows. Unmatched saved windows should stop loading and show **Saved windows unavailable** in otherwise empty zones. A later unrelated scan should not show startup loading again. Check that denied permissions, pause, and blocked configuration do not leave a spinner running.
+- Restart with saved tabs and verify the bars show **Loading tabs…** during initial discovery, then only in zones actively recovering saved windows. Unmatched saved windows should stop loading and show **Saved windows unavailable** in otherwise empty zones. With unmatched saved windows still pending, select Terminal in C and verify A and B do not show loading. Later unrelated scans should not show startup loading again. Check that denied permissions, pause, blocked configuration, and failed recovery do not leave a spinner running.
 - Include a display with negative coordinates or a vertical offset.
 - Resize a managed window manually. A single tab click should preserve its size; double-click should fill the zone.
 - Drag the column divider from 25% to 20% and verify the preview line shows Left 20% / Right 80%. Row dragging should show Top / Bottom percentages. Preview must not write external window frames. If an app rejects the new size, the prior layout settings should return and Settings should name the app that rejected it; verify rollback and release still work.
@@ -79,6 +80,7 @@ Use a disposable test document and normal app windows. Close both SpaceTabs proc
 ### Profiles and lifecycle
 
 - Save, apply, replace, and delete a profile. Include closed apps and ambiguous window titles.
+- Open both native Profiles submenus and verify saved names, deletion/updates on reopen, and disabled actions during pause or busy work. Enable manual app opening for a profile, close an assigned app, then apply from the menu and Settings. Verify it opens in the background and joins the correct zone without stealing Settings focus. A running app must not open again. Verify the default-off option, older profiles, failed app paths, failed layout commits, cancellation by another profile, and automatic display switching. Specific browser windows must not become broad app assignments merely because they were saved in a profile.
 - Open three Chrome windows across two displays and assign only one. Switch and close browser tabs inside it, then restart SpaceTabs while Chrome keeps running. The same window should recover even if its title and page URL changed. Closing that entire window must not cause a different Chrome window showing its former page to be assigned. Older unmatched sessions need one manual reassignment to record a window number.
 - Link a profile to the current display setup, disconnect and reconnect a display, then restart without the previously selected display.
 - Pause manually before a display or Space change. An automatic profile must not resume that pause.

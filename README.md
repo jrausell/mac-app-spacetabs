@@ -52,7 +52,7 @@ SpaceTabs Settings has its own Dock and Command-Tab entry, so you can return to 
 | Languages | Follow your Mac automatically, or choose English or Español in Settings. |
 | Everyday options | Name zones, start at login, and inspect diagnostics when an app behaves differently. |
 
-Assigning a closed app saves a rule without launching it. Compatible windows can join the assigned zone when you open that app. Profiles restore windows they can identify safely; they do not launch closed apps.
+Assigning a closed app saves a rule without launching it. Compatible windows can join the assigned zone when you open that app. Switch saved setups from **SpaceTabs → Profiles** in the menu bar or from Settings. Each profile can optionally open closed assigned apps when you switch manually; automatic display-profile changes keep closed apps closed. See [Profiles and monitors](docs/MONITORS.md) for the save-and-switch flow.
 
 ## Get started
 

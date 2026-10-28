@@ -2,11 +2,10 @@ import AppKit
 import SpaceTabsCore
 
 extension AppModel {
-    var isLoadingTabs: Bool {
+    func isLoadingTabs(in zone: Zone) -> Bool {
         guard trusted, !demo, !managementSuspended, !configurationBlocked, !terminating else { return false }
         if !hasCompletedDiscovery { return true }
-        let awaitingRecovery = !pendingTabs.isEmpty || pendingAutomaticProfile != nil
-        return awaitingRecovery && (scanning || refreshInFlight || busy)
+        return restoringTabZones.contains(zone)
     }
 
     var applicationBundleURL: URL {

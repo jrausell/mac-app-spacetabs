@@ -87,7 +87,11 @@ Fixed bars reserve a header. Auto-hidden bars float over full-height zone conten
 
 Fixed bars optionally rest one window level below normal app windows. TabBarVisibility tracks a temporary Show Tabs reveal independently of permanent visibility: expiry lowers fixed bars instead of hiding them. PanelController changes only the bars' and resize handles' public NSWindow levels; it does not reorder, query, or resize external windows to enforce this setting. Layout updates do not renew the reveal timer.
 
-Fixed bars rest behind app windows by default. The foreground checkbox inverts the existing stored background preference. Desktop bars derive their loading indicator from discovery and pending-recovery state; no loading timer, extra scans, or new persistence fields are needed. Unmatched idle sessions stop loading rather than displaying an indefinite spinner.
+Fixed bars rest behind app windows by default. The foreground checkbox inverts the existing stored background preference. Loading appears in all bars only until initial discovery completes. Session recovery then marks only the zones with matched windows being restored; profile application marks its target zones. Both clear that state on success, failure, or cancellation. Unmatched saved tabs, tab selection, generic busy state, and background refreshes do not themselves show loading. No loading timer, extra scans, or new persistence fields are needed.
+
+The local AppKit mouse monitor identifies left clicks by the actual tab-bar window, covering native app-tab buttons and group backgrounds. The default click preference requests the existing all-bar reveal without consuming the event, querying AX, changing selection, or activating SpaceTabs. Resize panels and external app windows are excluded. The preference travels through the existing appearance command and snapshot.
+
+Saved profile names are populated when either native Profiles submenu opens. Applying a profile uses the same guarded manager operation as Settings and Search. An optional per-profile launch preference applies only to explicit manual switches after successful layout/persistence commit. The manager opens closed app assignments sequentially without activation; automatic display profiles and JSON loading never launch apps. Existing launch events perform bounded discovery and assignment. New profile applications, suspension, and shutdown cancel pending launch work.
 
 ## Focus and zoom
 

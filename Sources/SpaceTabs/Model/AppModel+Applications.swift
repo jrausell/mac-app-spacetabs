@@ -55,34 +55,76 @@ extension AppModel {
         }
     }
 
-    func launchApplication(_ application: InstalledApplication) {
-        if sendToManager(.launch(application.id)) { return }
-        // Launches are explicit UI actions, never a consequence of reading JSON.
+    func launchApplication(
+        _ application: InstalledApplication, activates: Bool = true, completion: (@MainActor () -> Void)? = nil
+    ) {
+        if sendToManager(.launch(application.id)) {
+            completion?()
+            return
+        }
+        // Launches require an explicit Open action or an opted-in manual profile switch.
         guard application.url.isFileURL, application.url.pathExtension.lowercased() == "app",
             let bundle = Bundle(url: application.url), bundle.bundleIdentifier == application.bundleID,
             bundle.object(forInfoDictionaryKey: "CFBundlePackageType") as? String == "APPL",
-            application.bundleID != SpaceTabsIdentity.appBundleID
+            application.bundleID != SpaceTabsIdentity.appBundleID,
+            application.bundleID != SpaceTabsIdentity.settingsBundleID
         else {
             catalogMessage = L10n.tr("The saved app no longer matches its path. Select it again in Apps.")
+            completion?()
             return
         }
-        guard !launchingApplications.contains(application.id) else { return }
+        guard !launchingApplications.contains(application.id) else {
+            completion?()
+            return
+        }
         launchingApplications.insert(application.id)
         let configuration = NSWorkspace.OpenConfiguration()
-        configuration.activates = true
+        configuration.activates = activates
         NSWorkspace.shared.openApplication(at: application.url, configuration: configuration) {
             [weak self] app, error in
             let pid = app?.processIdentifier
             let detail = error?.localizedDescription
             Task { @MainActor in
+                defer { completion?() }
                 guard let self else { return }
                 self.launchingApplications.remove(application.id)
                 if let detail {
                     self.catalogMessage = L10n.tr("Could not open \(application.name): \(detail)")
                 } else if let pid {
-                    self.catalogMessage = L10n.tr(
-                        "\(application.name) opened. Assign its windows to a zone in Open Windows.")
+                    self.catalogMessage =
+                        self.applicationAssignment(for: application) != nil
+                        ? L10n.tr("\(application.name) opened. Waiting for its assigned windows.")
+                        : L10n.tr("\(application.name) opened. Assign its windows to a zone in Open Windows.")
                     self.applicationChanged(pid: pid)
+                }
+            }
+        }
+    }
+
+    func openAssignedApps(for profile: WorkspaceProfile, automatically: Bool = false) {
+        guard profile.openAssignedApps, !automatically else { return }
+        let running = Set(
+            NSWorkspace.shared.runningApplications.compactMap {
+                $0.bundleURL?.resolvingSymlinksInPath().standardizedFileURL.path
+            })
+        let applications = profile.closedAssignedApps(runningPaths: running, automatically: automatically)
+        guard !applications.isEmpty else { return }
+        profileLaunchTask = Task { [weak self] in
+            guard let self else { return }
+            for rule in applications {
+                guard !Task.isCancelled, !terminating, !managementSuspended, trusted, !demo, !configurationBlocked,
+                    preferences.profiles.first(where: { $0.id == profile.id })?.openAssignedApps == true
+                else { return }
+                guard applicationAssignments.contains(rule) else { continue }
+                let stillRunning = NSWorkspace.shared.runningApplications.contains {
+                    $0.bundleURL?.resolvingSymlinksInPath().standardizedFileURL.path == rule.id
+                }
+                if stillRunning { continue }
+                // One launch at a time; AX assignment uses existing bounded launch events.
+                await withCheckedContinuation { continuation in
+                    launchApplication(
+                        InstalledApplication(url: rule.url, name: rule.name, bundleID: rule.bundleID), activates: false
+                    ) { continuation.resume() }
                 }
             }
         }

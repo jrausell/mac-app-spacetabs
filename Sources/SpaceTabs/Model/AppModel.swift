@@ -19,13 +19,14 @@ final class AppModel {
     var loginEnabled = false
     var loginNeedsApproval = false
     var loginMessage: String?
-    @ObservationIgnored let preferencesStore = UserPreferencesStore.standard
+    @ObservationIgnored let preferencesStore: UserPreferencesStore
     // MARK: - App catalog and assignments
 
     var assignmentZone: Zone?
     var assignmentRequest = 0
     var applicationAssignments: [ApplicationAssignment] = []
     @ObservationIgnored var assignedLaunchTasks: [Int32: Task<Void, Never>] = [:]
+    @ObservationIgnored var profileLaunchTask: Task<Void, Never>?
     @ObservationIgnored var applicationAssignmentAttempts: [UUID: String] = [:]
     var installedApplications: [InstalledApplication] = []
     var catalogMessage: String?
@@ -103,6 +104,7 @@ final class AppModel {
     var activeZone: Zone = .a
     var originals: [UUID: OriginalWindowState] = [:]
     var pendingTabs: [SavedTab] = []
+    var restoringTabZones = Set<Zone>()
     @ObservationIgnored var sessionRestoration = SessionRestorationQueue()
     var configurationBlocked = false
     var terminating = false
@@ -128,4 +130,8 @@ final class AppModel {
     @ObservationIgnored var lastTabClick = L10n.tr("none")
     @ObservationIgnored var presentationRevision = 0
     @ObservationIgnored var explicitSelectionRevision: [Zone: Int] = [:]
+
+    init(preferencesStore: UserPreferencesStore = .standard) {
+        self.preferencesStore = preferencesStore
+    }
 }

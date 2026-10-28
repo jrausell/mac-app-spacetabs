@@ -5,11 +5,32 @@ public struct WorkspaceProfile: Codable, Equatable, Sendable, Identifiable {
     public var name: String
     public var layout: PersistedLayout
     public var zoneNames: [Zone: String]
-    public init(id: UUID = UUID(), name: String, layout: PersistedLayout, zoneNames: [Zone: String]) {
+    public var openAssignedApps = false
+    public init(
+        id: UUID = UUID(), name: String, layout: PersistedLayout, zoneNames: [Zone: String],
+        openAssignedApps: Bool = false
+    ) {
         self.id = id
         self.name = name
         self.layout = layout
         self.zoneNames = zoneNames
+        self.openAssignedApps = openAssignedApps
+    }
+    private enum CodingKeys: String, CodingKey { case id, name, layout, zoneNames, openAssignedApps }
+    public init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(UUID.self, forKey: .id)
+        name = try values.decode(String.self, forKey: .name)
+        layout = try values.decode(PersistedLayout.self, forKey: .layout)
+        zoneNames = try values.decode([Zone: String].self, forKey: .zoneNames)
+        openAssignedApps = try values.decodeIfPresent(Bool.self, forKey: .openAssignedApps) ?? false
+    }
+    public func closedAssignedApps(runningPaths: Set<String>, automatically: Bool = false) -> [ApplicationAssignment] {
+        guard openAssignedApps, !automatically else { return [] }
+        var seen = Set<String>()
+        return layout.applicationAssignments.filter {
+            !runningPaths.contains($0.id) && seen.insert($0.id).inserted
+        }
     }
 }
 

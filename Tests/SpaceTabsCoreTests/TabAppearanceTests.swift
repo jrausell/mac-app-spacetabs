@@ -37,6 +37,7 @@ import Testing
     appearance.backgroundOverride = TabColor(0.2, 0.1, 0.4)
     appearance.backgroundOpacity = 0.35
     appearance.keepFixedBarsBehindWindows = false
+    appearance.revealAllBarsOnClick = false
     appearance.colorA = TabColor(0.8, 0.5, 0.2)
     appearance.dragBorderColor = TabColor(0.2, 0.7, 0.4)
     var layout = PersistedLayout(tabAppearance: appearance)
@@ -84,9 +85,11 @@ import Testing
     var object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
     object.removeValue(forKey: "dragBorderColor")
     object.removeValue(forKey: "keepFixedBarsBehindWindows")
+    object.removeValue(forKey: "revealAllBarsOnClick")
     let legacyData = try JSONSerialization.data(withJSONObject: object)
     #expect(try JSONDecoder().decode(TabAppearance.self, from: legacyData) == appearance)
     #expect(appearance.keepFixedBarsBehindWindows)
+    #expect(appearance.revealAllBarsOnClick)
     for color in [
         TabColor.white, .black, TabColor(0.5, 0.5, 0.5), TabColor(1, 0, 0), TabColor(0, 1, 0), TabColor(0, 0, 1),
     ] {

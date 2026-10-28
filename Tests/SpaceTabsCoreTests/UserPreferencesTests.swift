@@ -18,6 +18,7 @@ import Testing
             name: "Desarrollo", layout: PersistedLayout(ratio: 0.75, tabs: [saved], template: .splitRight),
             zoneNames: preferences.zoneNames)
     ]
+    preferences.profiles[0].openAssignedApps = true
     try store.save(preferences)
     #expect(try store.load() == preferences)
     let before = try Data(contentsOf: store.url)
@@ -37,6 +38,28 @@ import Testing
     invalid.shortcuts[1] = invalid.shortcuts[8]
     #expect(throws: (any Error).self) { try store.save(invalid) }
     #expect(try Data(contentsOf: store.url) == before)
+}
+
+@Test func profileAppLaunchesAreOptInAndOnlyIncludeClosedExplicitAppAssignments() throws {
+    let editor = ApplicationAssignment(
+        url: URL(fileURLWithPath: "/Applications/Editor.app"), name: "Editor", bundleID: "test.editor", zone: .b)
+    let terminal = ApplicationAssignment(
+        url: URL(fileURLWithPath: "/Applications/Terminal.app"), name: "Terminal", bundleID: "test.terminal", zone: .a)
+    let browserTab = SavedTab(
+        id: UUID(), identity: WindowIdentity(bundleID: "test.browser", title: "Saved page"), zone: .b, selected: true)
+    var profile = WorkspaceProfile(
+        name: "Work", layout: PersistedLayout(tabs: [browserTab], applicationAssignments: [editor, terminal]),
+        zoneNames: [:])
+    #expect(profile.closedAssignedApps(runningPaths: []).isEmpty)
+    profile.openAssignedApps = true
+    #expect(profile.closedAssignedApps(runningPaths: [], automatically: true).isEmpty)
+    #expect(profile.closedAssignedApps(runningPaths: [editor.id]) == [terminal])
+    #expect(profile.closedAssignedApps(runningPaths: [editor.id, terminal.id]).isEmpty)
+    #expect(profile.closedAssignedApps(runningPaths: []).map(\.bundleID) == ["test.editor", "test.terminal"])
+    var legacy = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(profile)) as? [String: Any])
+    legacy.removeValue(forKey: "openAssignedApps")
+    let decoded = try JSONDecoder().decode(WorkspaceProfile.self, from: JSONSerialization.data(withJSONObject: legacy))
+    #expect(!decoded.openAssignedApps && decoded.closedAssignedApps(runningPaths: []).isEmpty)
 }
 
 @Test func profileResolvesDocumentsAndSelectionsWhilePreservingUnlistedWindowsAndAmbiguity() throws {

@@ -2,6 +2,8 @@ import AppKit
 import SpaceTabsCore
 import SwiftUI
 
+private final class SavedProfilesMenu: NSMenu {}
+
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var item: NSStatusItem?
@@ -162,6 +164,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let showTabs = menu.addItem(
             withTitle: L10n.tr("Show Tabs · ⌃⌥T"), action: #selector(revealTabs), keyEquivalent: "")
         showTabs.target = self
+        menu.addItem(makeProfilesMenu())
         pauseItem = menu.addItem(
             withTitle: L10n.tr("Pause and Restore Windows"), action: #selector(togglePause), keyEquivalent: "")
         pauseItem?.target = self
@@ -211,6 +214,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let settings = application.addItem(
             withTitle: L10n.tr("Windows and Settings…"), action: #selector(showSettings), keyEquivalent: ",")
         settings.target = self
+        application.addItem(makeProfilesMenu())
         application.addItem(.separator())
         application.addItem(
             withTitle: L10n.tr("Hide SpaceTabs"), action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
@@ -267,6 +271,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func revealTabs() { panels.reveal() }
 
+    private func makeProfilesMenu() -> NSMenuItem {
+        let menu = SavedProfilesMenu(title: L10n.tr("Profiles"))
+        menu.delegate = self
+        menu.autoenablesItems = false
+        menu.addItem(
+            withTitle: L10n.tr("No saved profiles. Save one in Settings → Profiles."), action: nil, keyEquivalent: ""
+        ).isEnabled = false
+        let item = NSMenuItem(title: L10n.tr("Profiles"), action: nil, keyEquivalent: "")
+        item.submenu = menu
+        return item
+    }
+
+    @objc private func applySavedProfile(_ sender: NSMenuItem) {
+        guard let value = sender.representedObject as? String, let id = UUID(uuidString: value) else { return }
+        model.applyProfile(id)
+    }
+
     @objc private func quitApp() { NSApp.terminate(nil) }
     @objc private func togglePause() { model.togglePause() }
     @objc private func reapplyLayout() { model.reapplyLayout() }
@@ -291,6 +312,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
+        if menu is SavedProfilesMenu {
+            menu.removeAllItems()
+            if model.preferences.profiles.isEmpty {
+                let item = menu.addItem(
+                    withTitle: L10n.tr("No saved profiles. Save one in Settings → Profiles."), action: nil,
+                    keyEquivalent: "")
+                item.isEnabled = false
+            }
+            for profile in model.preferences.profiles {
+                let item = menu.addItem(
+                    withTitle: profile.name, action: #selector(applySavedProfile(_:)), keyEquivalent: "")
+                item.target = self
+                item.representedObject = profile.id.uuidString
+                item.isEnabled = model.canApplyProfile
+            }
+            return
+        }
         if let item = menu.items.first(where: { $0.action == #selector(revealTabs) }) {
             item.title =
                 L10n.tr("Show Tabs · ")
