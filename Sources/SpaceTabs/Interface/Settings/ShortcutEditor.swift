@@ -5,6 +5,7 @@ import SwiftUI
 extension ShortcutBinding {
     static var keys: [(UInt32, String)] {
         [
+            (modifiersOnlyKey, L10n.tr("Modifiers only")),
             (0, "A"), (11, "B"), (8, "C"), (2, "D"), (14, "E"), (3, "F"), (5, "G"), (4, "H"), (34, "I"), (38, "J"),
             (40, "K"), (37, "L"), (46, "M"),
             (45, "N"), (31, "O"), (35, "P"), (12, "Q"), (15, "R"), (1, "S"), (17, "T"), (32, "U"), (9, "V"), (13, "W"),
@@ -22,7 +23,7 @@ extension ShortcutBinding {
         guard enabled else { return L10n.tr("No Shortcut") }
         return [(UInt32(controlKey), "⌃"), (UInt32(optionKey), "⌥"), (UInt32(shiftKey), "⇧"), (UInt32(cmdKey), "⌘")]
             .filter { modifiers & $0.0 != 0 }.map(\.1).joined()
-            + (Self.keys.first { $0.0 == key }?.1 ?? L10n.tr("Key \(key)"))
+            + (isModifiersOnly ? "" : (Self.keys.first { $0.0 == key }?.1 ?? L10n.tr("Key \(key)")))
     }
 }
 
@@ -59,8 +60,12 @@ struct ShortcutEditor: View {
                 Picker(L10n.tr("Key"), selection: $key) {
                     ForEach(ShortcutBinding.keys, id: \.0) { item in Text(item.1).tag(item.0) }
                 }
-                Text(L10n.tr("Include Control, Option, or Command. macOS reports shortcuts that are already in use."))
-                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Text(
+                    L10n.tr(
+                        "Include Control, Option, or Command. For modifiers only, choose at least two; tap and release without typing or clicking."
+                    )
+                )
+                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 HStack {
                     Button(L10n.tr("Cancel")) { editing = false }.keyboardShortcut(.cancelAction)
                     Spacer()

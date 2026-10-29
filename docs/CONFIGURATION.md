@@ -63,6 +63,8 @@ Display-profile links use public display UUIDs, dimensions, and arrangement. The
 
 Shortcut IDs are persistent numeric values. New defaults must not replace an existing custom shortcut: migration leaves the conflicting new action unbound. Decoder defaults keep older bindings enabled unless explicitly disabled.
 
+Show Tabs defaults to a Control + Option + Command modifier tap. `ShortcutBinding.key = 127` represents **Modifiers only**; ordinary key codes remain 0–126. Modifier-only bindings require at least two modifiers, including Control, Option, or Command. Existing explicit bindings (including the previous Control + Option + T) and disabled bindings remain unchanged. A clean tap fires after all modifiers are released; regular keys, mouse buttons, scrolling, Fn, or extra modifiers cancel it. These bindings use passive event monitors rather than exclusive Carbon registration, so conflicts with other apps cannot be detected.
+
 ## Language preference
 
 `UserPreferences.language` stores `automatic`, `en`, or `es`. Older files default to `automatic`; an unsupported stored value is rejected without overwriting the file. This choice is separate from profiles. Changing it does not rename profiles, window identities, or saved enum values. See [Localization](LOCALIZATION.md).

@@ -4,6 +4,9 @@ Version numbers below describe local source milestones. They do not imply publis
 
 ## 0.9.0 — Unreleased
 
+- Show tab bars with a one-handed Control + Option + Command tap, firing when all three keys are released.
+- Add configurable modifier-only shortcuts; typing, pointer actions, scrolling, and extra modifiers cancel the tap. Preserve existing explicit and disabled bindings.
+
 - Add automatic language detection, English fallback, and a language selector in General.
 - Include complete English and Spanish translation catalogs for app-owned interface text, menus, errors, and diagnostics.
 - Synchronize the saved choice between the manager and Settings helper.

@@ -499,3 +499,8 @@
 "Show Logs in Finder" = "Mostrar registros en Finder";
 "Copy Log History" = "Copiar historial de registros";
 "Errors, slow operations, and suspected UI freezes are logged automatically across restarts. Logs stay on this Mac and rotate at 4 MB total. They may contain app names, window titles, and file paths; review before sharing." = "Los errores, las operaciones lentas y los posibles bloqueos de la interfaz se registran automáticamente y se conservan al reiniciar. Los registros permanecen en este Mac y rotan con un máximo total de 4 MB. Pueden contener nombres de apps, títulos de ventanas y rutas de archivos; revísalos antes de compartirlos.";
+"Show Tabs · ⌃⌥⌘" = "Mostrar pestañas · ⌃⌥⌘";
+"Modifiers only" = "Solo modificadores";
+"Could not observe modifier-only shortcuts." = "No se pudieron observar los atajos de solo modificadores.";
+"Include Control, Option, or Command. For modifiers only, choose at least two; tap and release without typing or clicking." = "Incluye Control, Option o Command. Para usar solo modificadores, elige al menos dos; pulsa y suelta sin escribir ni hacer clic.";
+"Key shortcuts register with macOS; modifier-only shortcuts use passive observation and cannot report conflicts with other apps. Test runs the action without testing key delivery. Shortcuts for C require a three-zone template." = "Los atajos con tecla se registran en macOS; los de solo modificadores usan observación pasiva y no pueden detectar conflictos con otras apps. Probar ejecuta la acción sin comprobar la recepción de teclas. Los atajos de C requieren una plantilla de tres zonas.";

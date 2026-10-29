@@ -103,6 +103,8 @@ Zoom uses `FocusedZoomTarget` to resolve the actual focused managed window. An u
 
 ## Input and overlays
 
+Ordinary key shortcuts use exclusive Carbon registration. Modifier-only shortcuts use passive local/global AppKit monitors and a pure `ModifierTapState` policy. A clean chord fires on full release; keys, mouse activity, scrolling, Fn, and unrelated modifiers cancel it. Carbon shortcut delivery also cancels a pending modifier tap because registered key presses may bypass passive observation. Monitors are removed and state discarded when bindings restart. Passive observation cannot detect other apps using the same modifier tap and requires Accessibility permission for global key events.
+
 The native Command + Shift drag uses passive event monitors. It confirms a real window move before showing targets.
 
 Control + right-drag uses a public CGEvent filter to reserve its mouse sequence. Its callback does no AX work and does not render panels. It uses Quartz event coordinates and accepts both `rightMouseDragged` and `mouseMoved` samples.

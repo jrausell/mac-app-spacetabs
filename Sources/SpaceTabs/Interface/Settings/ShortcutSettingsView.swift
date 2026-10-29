@@ -58,7 +58,7 @@ struct ShortcutSettingsView: View {
                 }.background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
                 Text(
                     L10n.tr(
-                        "Registered means macOS accepted the shortcut. Test runs the action without a key press and does not test global key delivery. Shortcuts for C only work with a three-zone template."
+                        "Key shortcuts register with macOS; modifier-only shortcuts use passive observation and cannot report conflicts with other apps. Test runs the action without testing key delivery. Shortcuts for C require a three-zone template."
                     )
                 )
                 .font(.caption).foregroundStyle(.secondary)

@@ -1,6 +1,9 @@
 import Foundation
 
 public struct ShortcutBinding: Codable, Equatable, Hashable, Sendable {
+    /// Sentinel for a tap of modifiers without a regular key.
+    public static let modifiersOnlyKey: UInt32 = 127
+    public var isModifiersOnly: Bool { key == Self.modifiersOnlyKey }
     public var enabled: Bool
     public var key: UInt32
     /// Carbon modifier mask, limited to Command, Option, Control and Shift.
@@ -18,6 +21,7 @@ public struct ShortcutBinding: Codable, Equatable, Hashable, Sendable {
         enabled = try values.decodeIfPresent(Bool.self, forKey: .enabled) ?? true
     }
     public var isValid: Bool {
-        key <= 126 && modifiers & ~UInt32(256 | 512 | 2048 | 4096) == 0 && modifiers & UInt32(256 | 2048 | 4096) != 0
+        (key <= 126 || (isModifiersOnly && modifiers.nonzeroBitCount >= 2))
+            && modifiers & ~UInt32(256 | 512 | 2048 | 4096) == 0 && modifiers & UInt32(256 | 2048 | 4096) != 0
     }
 }

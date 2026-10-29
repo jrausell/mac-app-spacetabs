@@ -44,6 +44,12 @@ Use a disposable test document and normal app windows. Close both SpaceTabs proc
 - Select SpaceTabs through the Dock and Command-Tab. All selected windows should come forward and B should receive final focus.
 - Select SpaceTabs Settings through the same controls. It should open Settings without restoring the workspace.
 
+### Modifier-only shortcuts
+
+- Tap Control + Option + Command in different press/release orders. Show Tabs should run once, after all three are released, both in Settings and in another app. Confirm Accessibility access for global keyboard observation.
+- Use the same modifiers with arrow keys, another letter, Shift, Fn, a click, a drag, or scrolling. Releasing them must not also show tabs. Hold a regular key or mouse button before pressing the modifiers and verify cancellation.
+- Edit, disable, restore defaults, and relaunch with a modifier-only binding. Existing explicit Control + Option + T and custom bindings must remain intact. Check registration warnings, shortcut labels in English/Spanish, and ordinary key shortcuts.
+
 ### Geometry and zoom
 
 - Check all three templates, both resize handles, and minimum proportions.

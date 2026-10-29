@@ -114,7 +114,7 @@ Scripts/build.sh release
 1. Open SpaceTabs and grant Accessibility access when requested.
 2. In **Settings → Apps**, assign open windows or installed apps to a zone.
 3. In **Design**, choose a template, select a display, and adjust the sizes.
-4. Show the tab bars with **Control + Option + T**, then switch tabs.
+4. Tap **Control + Option + Command** together, then release all three to show the tab bars and switch tabs.
 5. Save your setup in **Profiles**. Use **Release** when you want a window back outside the layout.
 
 For an external screen, see [Profiles and monitors](docs/MONITORS.md). Profiles can switch between display setups; independent layouts on multiple displays at once are not implemented yet.
@@ -125,7 +125,7 @@ For an external screen, see [Profiles and monitors](docs/MONITORS.md). Profiles 
 
 | Action | Default control |
 | --- | --- |
-| Show tab bars | Control + Option + T |
+| Show tab bars | Tap and release Control + Option + Command |
 | Search tabs and profiles | Control + Option + Space |
 | Zoom or restore the focused managed window | Control + Option + Return |
 | Focus A / B / C | Control + Option + 1 / 2 / 3 |
@@ -141,6 +141,8 @@ For an external screen, see [Profiles and monitors](docs/MONITORS.md). Profiles 
 | Restore the selected windows in all zones | Command-Tab to SpaceTabs or click its Dock icon |
 
 Control + right-drag is optional. It shows an outline after identifying the source window and moves the real window on release. Release Control before the button to cancel. While enabled, Control + right-click is reserved for this gesture; normal right-click remains available. See [Troubleshooting](docs/TROUBLESHOOTING.md) if it does not respond.
+
+Tap and release Control + Option + Command together to show tabs with one hand. Typing, clicking, scrolling, or adding Shift cancels the tap. Existing custom shortcuts stay unchanged; choose **Modifiers only** in the shortcut editor to configure a modifier tap. Other apps can also observe these modifiers, so no combination is guaranteed exclusive.
 
 Moving the pointer to the top edge reveals tabs only if that option is enabled. It is off by default.
 

@@ -299,7 +299,7 @@ import Testing
     let binding = ShortcutBinding(key: 0, modifiers: 4096 | 2048 | 512)
     try ShortcutManager.validateBindings([action.rawValue: binding])
     #expect(binding.display == "⌃⌥⇧A")
-    #expect(action.defaultBinding.display == "⌃⌥T")
+    #expect(action.defaultBinding.display == "⌃⌥⌘")
     #expect(throws: (any Error).self) {
         try ShortcutManager.validateBindings([action.rawValue: ShortcutManager.Action.focusA.defaultBinding])
     }
@@ -336,6 +336,11 @@ import Testing
     try ShortcutManager.validateBindings(migrated)
     #expect(ShortcutManager.migratedBindings(migrated) == migrated)
     try ShortcutManager.validateBindings([:])
+    let legacy = ShortcutBinding(key: 17, modifiers: 6144)
+    #expect(ShortcutManager.migratedBindings([8: legacy])[8] == legacy)
+    var disabled = ShortcutManager.Action.showTabs.defaultBinding
+    disabled.enabled = false
+    #expect(ShortcutManager.migratedBindings([8: disabled])[8] == disabled)
     let old = Data(#"{"key":17,"modifiers":6144}"#.utf8)
     #expect(try JSONDecoder().decode(ShortcutBinding.self, from: old).enabled)
 }

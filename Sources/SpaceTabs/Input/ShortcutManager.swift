@@ -29,11 +29,15 @@ final class ShortcutManager {
             case .moveA: L10n.tr("Move to A · ⌃⌥⇧←")
             case .moveB: L10n.tr("Move to B · ⌃⌥⇧→")
             case .release: L10n.tr("Release Window · ⌃⌥⌫")
-            case .showTabs: L10n.tr("Show Tabs · ⌃⌥T")
+            case .showTabs: L10n.tr("Show Tabs · ⌃⌥⌘")
             }
         }
         var title: String { label.components(separatedBy: " · ")[0] }
         var defaultBinding: ShortcutBinding {
+            if self == .showTabs {
+                return ShortcutBinding(
+                    key: ShortcutBinding.modifiersOnlyKey, modifiers: UInt32(controlKey | optionKey | cmdKey))
+            }
             let spatial = rawValue >= Action.focusLeft.rawValue
             let moving = [Action.moveA, .moveB, .moveC, .moveLeft, .moveRight, .moveUp, .moveDown].contains(self)
             return ShortcutBinding(
@@ -60,6 +64,7 @@ final class ShortcutManager {
     private(set) var registeredActions: Set<Action> = []
     private var refs: [EventHotKeyRef] = []
     private var eventHandler: EventHandlerRef?
+    private var modifierMonitor: ModifierShortcutMonitor?
     var handler: (Action) -> Void = { _ in }
 
     static func validateBindings(_ overrides: [UInt32: ShortcutBinding]) throws {
@@ -102,15 +107,34 @@ final class ShortcutManager {
                     return OSStatus(eventNotHandledErr)
                 }
                 let manager = Unmanaged<ShortcutManager>.fromOpaque(context).takeUnretainedValue()
-                Task { @MainActor in manager.handler(action) }
+                Task { @MainActor in
+                    manager.modifierMonitor?.cancel()
+                    manager.handler(action)
+                }
                 return noErr
             }, 1, &spec, Unmanaged.passUnretained(self).toOpaque(), &eventHandler)
         guard error == noErr else { return [L10n.tr("Could not register shortcuts (\(error)).")] }
         var failures: [String] = []
+        let modifierBindings = Dictionary(
+            uniqueKeysWithValues: Action.allCases.compactMap { action -> (Action, ShortcutBinding)? in
+                let binding = bindings[action.rawValue] ?? action.defaultBinding
+                return binding.enabled && binding.isModifiersOnly ? (action, binding) : nil
+            })
+        if !modifierBindings.isEmpty {
+            let monitor = ModifierShortcutMonitor(bindings: modifierBindings) { [weak self] action in
+                self?.handler(action)
+            }
+            modifierMonitor = monitor
+            if monitor.start() {
+                registeredActions.formUnion(modifierBindings.keys)
+            } else {
+                failures.append(L10n.tr("Could not observe modifier-only shortcuts."))
+            }
+        }
         for action in Action.allCases {
             var ref: EventHotKeyRef?
             let binding = bindings[action.rawValue] ?? action.defaultBinding
-            guard binding.enabled else { continue }
+            guard binding.enabled, !binding.isModifiersOnly else { continue }
             let modifiers = binding.modifiers
             let status = RegisterEventHotKey(
                 binding.key, modifiers,
@@ -131,6 +155,8 @@ final class ShortcutManager {
     }
 
     func stop() {
+        modifierMonitor?.stop()
+        modifierMonitor = nil
         for ref in refs { UnregisterEventHotKey(ref) }
         refs.removeAll()
         registeredActions.removeAll()

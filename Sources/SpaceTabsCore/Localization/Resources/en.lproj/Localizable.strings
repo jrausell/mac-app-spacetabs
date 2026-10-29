@@ -499,3 +499,8 @@
 "Show Logs in Finder" = "Show Logs in Finder";
 "Copy Log History" = "Copy Log History";
 "Errors, slow operations, and suspected UI freezes are logged automatically across restarts. Logs stay on this Mac and rotate at 4 MB total. They may contain app names, window titles, and file paths; review before sharing." = "Errors, slow operations, and suspected UI freezes are logged automatically across restarts. Logs stay on this Mac and rotate at 4 MB total. They may contain app names, window titles, and file paths; review before sharing.";
+"Show Tabs · ⌃⌥⌘" = "Show Tabs · ⌃⌥⌘";
+"Modifiers only" = "Modifiers only";
+"Could not observe modifier-only shortcuts." = "Could not observe modifier-only shortcuts.";
+"Include Control, Option, or Command. For modifiers only, choose at least two; tap and release without typing or clicking." = "Include Control, Option, or Command. For modifiers only, choose at least two; tap and release without typing or clicking.";
+"Key shortcuts register with macOS; modifier-only shortcuts use passive observation and cannot report conflicts with other apps. Test runs the action without testing key delivery. Shortcuts for C require a three-zone template." = "Key shortcuts register with macOS; modifier-only shortcuts use passive observation and cannot report conflicts with other apps. Test runs the action without testing key delivery. Shortcuts for C require a three-zone template.";
