@@ -495,3 +495,7 @@
 "Open closed assigned apps when switching manually" = "Open closed assigned apps when switching manually";
 "Uses saved app assignments. Automatic display profiles keep closed apps closed. Browser tabs and documents are not recreated." = "Uses saved app assignments. Automatic display profiles keep closed apps closed. Browser tabs and documents are not recreated.";
 "{0} opened. Waiting for its assigned windows." = "{0} opened. Waiting for its assigned windows.";
+"Problem History" = "Problem History";
+"Show Logs in Finder" = "Show Logs in Finder";
+"Copy Log History" = "Copy Log History";
+"Errors, slow operations, and suspected UI freezes are logged automatically across restarts. Logs stay on this Mac and rotate at 4 MB total. They may contain app names, window titles, and file paths; review before sharing." = "Errors, slow operations, and suspected UI freezes are logged automatically across restarts. Logs stay on this Mac and rotate at 4 MB total. They may contain app names, window titles, and file paths; review before sharing.";

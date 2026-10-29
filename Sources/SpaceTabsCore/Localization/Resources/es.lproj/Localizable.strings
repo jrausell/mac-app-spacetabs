@@ -495,3 +495,7 @@
 "Open closed assigned apps when switching manually" = "Abrir las aplicaciones asignadas cerradas al cambiar manualmente";
 "Uses saved app assignments. Automatic display profiles keep closed apps closed. Browser tabs and documents are not recreated." = "Utiliza las asignaciones guardadas. Los cambios automáticos de pantalla no abren aplicaciones cerradas. No se recrean pestañas del navegador ni documentos.";
 "{0} opened. Waiting for its assigned windows." = "{0} se ha abierto. Esperando sus ventanas asignadas.";
+"Problem History" = "Historial de problemas";
+"Show Logs in Finder" = "Mostrar registros en Finder";
+"Copy Log History" = "Copiar historial de registros";
+"Errors, slow operations, and suspected UI freezes are logged automatically across restarts. Logs stay on this Mac and rotate at 4 MB total. They may contain app names, window titles, and file paths; review before sharing." = "Los errores, las operaciones lentas y los posibles bloqueos de la interfaz se registran automáticamente y se conservan al reiniciar. Los registros permanecen en este Mac y rotan con un máximo total de 4 MB. Pueden contener nombres de apps, títulos de ventanas y rutas de archivos; revísalos antes de compartirlos.";

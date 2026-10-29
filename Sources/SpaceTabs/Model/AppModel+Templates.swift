@@ -64,6 +64,7 @@ extension AppModel {
                 }
                 commit()
             } catch {
+                if !(error is CancellationError) { DiagnosticLog.shared.failure(error, operation: #function) }
                 self.layoutTemplate = previousTemplate
                 self.ratio = previousRatio
                 self.rowRatio = previousRows

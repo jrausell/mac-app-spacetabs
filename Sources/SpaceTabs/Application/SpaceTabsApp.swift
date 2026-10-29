@@ -17,6 +17,7 @@ enum SpaceTabsApp {
         }
         L10n.configure(choice)
         if Bundle.main.bundleIdentifier == SettingsHost.helperID {
+            DiagnosticLog.shared.start()
             SettingsApplication.run()
             return
         }
@@ -41,6 +42,7 @@ enum SpaceTabsApp {
         if CommandLine.arguments.contains("--smoke-test") {
             FileHandle.standardError.write(Data("SpaceTabs smoke: starting NSApplication…\n".utf8))
         }
+        DiagnosticLog.shared.start()
         let app = NSApplication.shared
         if CommandLine.arguments.contains("--smoke-test") {
             FileHandle.standardError.write(Data("SpaceTabs smoke: NSApplication created.\n".utf8))

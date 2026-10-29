@@ -95,6 +95,15 @@ Use a disposable test document and normal app windows. Close both SpaceTabs proc
 - Test denied or revoked Accessibility access without deleting user configuration.
 - Enable and disable launch at login only in your normal user session, then verify the system's reported state.
 
+### Persistent diagnostics
+
+- Verify both processes create local logs, then provoke a rejected resize or unavailable window. Check timestamps, source sites, operation IDs, typed error fields, and the affected PID/AX code where available. Replace the UI notice and restart; the earlier record must remain until rotation.
+- Check **Copy Log History** and **Show Logs in Finder** in Settings. Verify they still work when the manager is unresponsive. Copy Full Diagnostics should include history alongside its live counters.
+- In a disposable debug session, pause the manager main thread for more than three seconds and verify a single suspected-stall record is written before resuming. Resume and verify duration. A debugger pause is expected to trigger the detector and is not an app failure. Check the separate helper similarly, and ensure sleep/wake does not generate a stale stall warning.
+- Force Quit a test process, relaunch, and check the missing shutdown marker. Quit normally and relaunch; there should be no interruption warning. Review rotation and permissions in temporary fixtures; never fill the user's production logs as a test.
+
+Automated diagnostic tests use temporary directories and synthetic errors. They cover rotation, private files, rejected symlinks, retained history, interrupted versus clean sessions, source/error metadata, operation completion/slow-warning deduplication, heartbeat recovery, and scheduling gaps. They do not prove real-desktop hang detection or identify a real blocked stack.
+
 ## What to report
 
 Record the toolchain, macOS version, apps, display setup, steps, observed behavior, and diagnostics. Avoid claiming that tests prove low CPU use or low latency on real apps.

@@ -703,6 +703,12 @@ actor WindowProcessSession: WindowAccess, WindowPresentationAccess {
     }
 
     private func accessError(_ error: AXError, attribute: String, operation: String) -> WindowAccessError {
+        DiagnosticLog.shared.record(
+            "ax.error", level: "error",
+            details: [
+                "pid": String(processID), "attribute": attribute, "operation": operation,
+                "axCode": String(error.rawValue), "reason": describe(error),
+            ])
         let kind: WindowAccessError.Kind =
             switch error {
             case .cannotComplete: .transient

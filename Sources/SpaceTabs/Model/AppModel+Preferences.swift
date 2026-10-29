@@ -27,6 +27,7 @@ extension AppModel {
             preferences = loaded
             L10n.configure(loaded.language)
         } catch {
+            if !(error is CancellationError) { DiagnosticLog.shared.failure(error, operation: #function) }
             preferencesBlocked = true
             message = L10n.tr("Could not load preferences: \(error.localizedDescription)")
         }
@@ -41,6 +42,7 @@ extension AppModel {
             preferences = value
             return true
         } catch {
+            if !(error is CancellationError) { DiagnosticLog.shared.failure(error, operation: #function) }
             message = L10n.tr("Could not save preferences: \(error.localizedDescription)")
             return false
         }
@@ -60,7 +62,10 @@ extension AppModel {
             restartShortcuts()
             layoutChanged()
             message = L10n.tr("Preferences reset. A copy of the previous file was kept.")
-        } catch { message = error.localizedDescription }
+        } catch {
+            if !(error is CancellationError) { DiagnosticLog.shared.failure(error, operation: #function) }
+            message = error.localizedDescription
+        }
     }
     func setZoneName(_ zone: Zone, name: String) {
         if sendToManager(.zoneName(zone, name)) { return }

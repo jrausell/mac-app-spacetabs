@@ -13,7 +13,10 @@ extension AppModel {
         do {
             if enabled { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
             loginMessage = nil
-        } catch { loginMessage = L10n.tr("Could not change launch at login: \(error.localizedDescription)") }
+        } catch {
+            if !(error is CancellationError) { DiagnosticLog.shared.failure(error, operation: #function) }
+            loginMessage = L10n.tr("Could not change launch at login: \(error.localizedDescription)")
+        }
         refreshLoginStatus()
     }
     func openLoginSettings() {

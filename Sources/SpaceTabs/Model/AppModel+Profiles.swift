@@ -122,6 +122,7 @@ extension AppModel {
                 self.showTabBarsAfterInteraction()
                 self.openAssignedApps(for: profile, automatically: automatically)
             } catch {
+                if !(error is CancellationError) { DiagnosticLog.shared.failure(error, operation: #function) }
                 install(oldLayout)
                 self.pendingTabs = oldPending
                 self.tabs = oldTabs
@@ -137,6 +138,10 @@ extension AppModel {
                     for (windowID, state) in beforePlacement {
                         do { try await self.windowManager.restore(windowID, state: self.safeRestoration(state)) } catch
                         {
+                            if !(error is CancellationError) {
+                                DiagnosticLog.shared.failure(error, operation: #function)
+                            }
+
                             failed[windowID] = states[windowID] ?? state
                             self.originals[windowID] = states[windowID] ?? state
                         }

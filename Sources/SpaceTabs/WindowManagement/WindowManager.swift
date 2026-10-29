@@ -51,6 +51,8 @@ actor WindowManager: WindowLayoutAccess, WindowFocusAccess, WindowPresentationAc
         let interval = signposter.beginInterval("Discovery", id: signposter.makeSignpostID())
         let serverWindows = await windowServerCatalog.windows()
         let results = await BoundedWorkPool.map(work, limit: 3) { app, worker in
+            let trace = DiagnosticOperation("discovery.app", details: ["pid": String(app.pid), "bundle": app.bundleID])
+            defer { trace.finish() }
             let started = ContinuousClock.now
             let result = await worker.scan(apps: [app], serverWindows: serverWindows)
             return (app.pid, result, started.duration(to: .now))

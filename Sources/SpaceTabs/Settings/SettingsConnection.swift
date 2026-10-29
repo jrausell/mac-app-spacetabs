@@ -74,6 +74,7 @@ import SpaceTabsCore
                         self.launching = false
                         self.helper = application
                         if let error {
+                            DiagnosticLog.shared.failure(error, operation: "settings.launch")
                             self.model.message = L10n.tr("Could not open Settings: \(error.localizedDescription)")
                         }
                     }
@@ -81,6 +82,7 @@ import SpaceTabsCore
             } catch is CancellationError {
                 launching = false
             } catch {
+                DiagnosticLog.shared.failure(error, operation: "settings.open")
                 launching = false
                 if !stopped { model.message = error.localizedDescription }
             }
@@ -145,6 +147,8 @@ import SpaceTabsCore
         guard data.count <= SettingsProtocol.messageLimit,
             let command = try? JSONDecoder().decode(SettingsCommand.self, from: data)
         else { return }
+        DiagnosticLog.shared.record(
+            "settings.command", details: ["command": String(String(describing: command).prefix { $0 != "(" })])
         model.noteUserInteraction()
         switch command {
         case .bindProfile(let id, let enabled): model.bindProfile(id, enabled: enabled)

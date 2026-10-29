@@ -54,3 +54,15 @@ Read the current message before resuming. **Release All** is available when you 
 ## What to include in a report
 
 Give the version, build source, macOS version, affected apps, template, display arrangement, steps, and expected result. Use **Copy Full Diagnostics**, then remove private paths and document/window names before sharing it. A screenshot can help explain visual layout, but diagnostics are more useful for event and focus failures.
+
+## Persistent problem history
+
+SpaceTabs records local diagnostic history automatically while the manager and Settings run. In **Settings → Diagnostics → Problem History**, use **Copy Log History** to share recent history or **Show Logs in Finder** to attach the files. These actions read local files directly, so they do not wait for the manager. **Copy Full Diagnostics** also includes that history, but its live AX counters still require a responsive manager and AX sessions.
+
+Files are in `~/Library/Logs/SpaceTabs/`: `manager.jsonl`, `manager-previous.jsonl`, `settings.jsonl`, and `settings-previous.jsonl`. Each is capped at 1 MiB, with two generations per process. Logs survive restarts, rotating the oldest history. No log is uploaded automatically. Messages can include app names, window titles, and local paths; review them before sharing.
+
+Records include UTC timestamps, PID, severity, event ID, source file/function/line, and available context. Handled manager errors include the error type/domain/code/reason. AX failures include the target PID, AX attribute and code. Profile/layout transactions, tab selection, and per-app discovery record operation IDs and durations; unfinished operations emit one warning after ten seconds. Notices, permissions/configuration errors, Settings commands, and transport failures are also retained. Normal cancellation is not an error.
+
+A utility-queue heartbeat reports a **suspected UI stall** when the main queue has not acknowledged a heartbeat for three seconds. It logs once while blocked and reports recovery duration if the UI responds again. Long monitor gaps reset the sample to avoid treating sleep or delayed background scheduling as a UI failure. This monitor does not poll AX, scan windows, sample stacks, or restore focus. A slow async AX request can leave the UI responsive; its operation history is separate from the heartbeat.
+
+A new session reports a previous missing clean-shutdown marker as an interrupted session. That can mean a crash, Force Quit, or another interruption; it is not proof of a crash. A hard crash cannot reliably write its final error. For crashes also attach the relevant macOS report from `~/Library/Logs/DiagnosticReports/`. For a persistent freeze, a process sample from Activity Monitor can help identify the blocked stack. Include the time of the problem and reproduction steps with the logs. Logging improves diagnosis; it does not establish every root cause or repair existing freezes by itself.

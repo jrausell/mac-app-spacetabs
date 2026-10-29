@@ -20,6 +20,7 @@ extension AppModel {
                 }
             }
             do { applyCatalog(try await applicationCatalog.scan()) } catch {
+                if !(error is CancellationError) { DiagnosticLog.shared.failure(error, operation: #function) }
                 catalogMessage = L10n.tr("Could not read the catalog: \(error.localizedDescription)")
             }
         }
@@ -49,6 +50,7 @@ extension AppModel {
                 guard let self else { return }
                 if self.sendToManager(.addApps(urls)) { return }
                 do { self.applyCatalog(try await self.applicationCatalog.add(urls)) } catch {
+                    if !(error is CancellationError) { DiagnosticLog.shared.failure(error, operation: #function) }
                     self.catalogMessage = L10n.tr("Could not add the app: \(error.localizedDescription)")
                 }
             }
@@ -80,8 +82,14 @@ extension AppModel {
         launchingApplications.insert(application.id)
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = activates
+        let trace = DiagnosticOperation("application.launch", details: ["bundle": application.bundleID])
         NSWorkspace.shared.openApplication(at: application.url, configuration: configuration) {
             [weak self] app, error in
+            defer { trace.finish() }
+            if let error {
+                DiagnosticLog.shared.failure(
+                    error, operation: "application.launch", details: ["bundle": application.bundleID])
+            }
             let pid = app?.processIdentifier
             let detail = error?.localizedDescription
             Task { @MainActor in
@@ -145,6 +153,7 @@ extension AppModel {
             ApplicationAssignment(
                 url: application.url, name: application.name, bundleID: application.bundleID, zone: zone))
         do { try checkpoint(tabs: tabs, originals: originals) } catch {
+            if !(error is CancellationError) { DiagnosticLog.shared.failure(error, operation: #function) }
             applicationAssignments = previous
             catalogMessage = L10n.tr("Could not save the assignment: \(error.localizedDescription)")
             return
@@ -257,6 +266,7 @@ extension AppModel {
                 try await self.windowManager.applyLayout(frames: frames, selected: selected)
                 if revision == 0 { try await self.raiseSelections(selected, revision: revision) }
             } catch {
+                if !(error is CancellationError) { DiagnosticLog.shared.failure(error, operation: #function) }
                 if let failure = error as? WindowError, !failure.recoveryStates.isEmpty {
                     self.tabs = next
                     self.originals = originalStates
@@ -293,7 +303,10 @@ extension AppModel {
                     try await self.windowManager.restore(id, state: self.safeRestoration(state))
                     self.originals[id] = nil
                     self.tabs.remove(id)
-                } catch { errors.append(error.localizedDescription) }
+                } catch {
+                    if !(error is CancellationError) { DiagnosticLog.shared.failure(error, operation: #function) }
+                    errors.append(error.localizedDescription)
+                }
             }
             if !errors.isEmpty {
                 self.paused = true

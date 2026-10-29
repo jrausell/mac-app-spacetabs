@@ -79,6 +79,7 @@ extension AppModel {
             } catch is CancellationError {
                 workspacePresentationStatus = L10n.tr("\(source): cancelled")
             } catch {
+                if !(error is CancellationError) { DiagnosticLog.shared.failure(error, operation: #function) }
                 message = error.localizedDescription
                 workspacePresentationStatus = "\(source): \(error.localizedDescription)"
             }

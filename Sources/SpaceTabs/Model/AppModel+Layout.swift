@@ -148,6 +148,7 @@ extension AppModel {
                 self.appliedRowRatio = self.rowRatio
                 self.appliedScreenID = self.selectedScreenID
             } catch {
+                if !(error is CancellationError) { DiagnosticLog.shared.failure(error, operation: #function) }
                 self.autoHideTabBars = self.appliedAutoHideTabBars
                 self.ratio = self.appliedRatio
                 self.rowRatio = self.appliedRowRatio

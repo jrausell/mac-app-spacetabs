@@ -8,6 +8,7 @@ private final class SavedProfilesMenu: NSMenu {}
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var item: NSStatusItem?
     private let model = AppModel()
+    private let responsiveness = ResponsivenessMonitor()
     private let panels = PanelController()
     private let windowDrag = WindowDragController()
     private let rightDrag = RightButtonDragController()
@@ -28,6 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var activationTask: Task<Void, Never>?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        responsiveness.start()
         if CommandLine.arguments.contains("--smoke-test") {
             print("SpaceTabs: AppKit started; displays=\(NSScreen.screens.count)")
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) { NSApp.terminate(nil) }
@@ -132,7 +134,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         environmentTask = Task { [weak self] in
             while !Task.isCancelled {
-                self?.model.checkEnvironment()
+                if let self {
+                    self.responsiveness.update(self.model.diagnosticContext)
+                    self.model.checkEnvironment()
+                }
                 do { try await Task.sleep(for: .seconds(5)) } catch { break }
             }
         }
@@ -379,6 +384,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        responsiveness.stop()
+        DiagnosticLog.shared.record("session.end")
+        DiagnosticLog.shared.flush()
         for observer in localizationObservers { NotificationCenter.default.removeObserver(observer) }
         localizationObservers.removeAll()
         quickSwitcher.close()

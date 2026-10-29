@@ -14,6 +14,20 @@ struct DebugSettingsView: View {
                     Spacer()
                     Button(L10n.tr("Copy Full Diagnostics")) { model.copyDiagnostics() }
                 }
+                GroupBox(L10n.tr("Problem History")) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(
+                            L10n.tr(
+                                "Errors, slow operations, and suspected UI freezes are logged automatically across restarts. Logs stay on this Mac and rotate at 4 MB total. They may contain app names, window titles, and file paths; review before sharing."
+                            )
+                        )
+                        .font(.caption).foregroundStyle(.secondary)
+                        HStack {
+                            Button(L10n.tr("Show Logs in Finder")) { model.revealDiagnosticLogs() }
+                            Button(L10n.tr("Copy Log History")) { model.copyDiagnosticLogs() }
+                        }
+                    }.padding(8)
+                }
                 GroupBox(L10n.tr("Current State")) {
                     VStack(alignment: .leading, spacing: 8) {
                         LabeledContent(

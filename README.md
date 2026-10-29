@@ -50,7 +50,7 @@ SpaceTabs Settings has its own Dock and Command-Tab entry, so you can return to 
 | Focused-window zoom | Temporarily expand the focused managed window, then restore its previous size. |
 | Local profiles | Save layouts, tab selections, and app assignments. Link a profile to a display setup. |
 | Languages | Follow your Mac automatically, or choose English or Español in Settings. |
-| Everyday options | Name zones, start at login, and inspect diagnostics when an app behaves differently. |
+| Everyday options | Name zones, start at login, and inspect persistent problem logs when an app behaves differently. |
 
 Assigning a closed app saves a rule without launching it. Compatible windows can join the assigned zone when you open that app. Switch saved setups from **SpaceTabs → Profiles** in the menu bar or from Settings. Each profile can optionally open closed assigned apps when you switch manually; automatic display-profile changes keep closed apps closed. See [Profiles and monitors](docs/MONITORS.md) for the save-and-switch flow.
 

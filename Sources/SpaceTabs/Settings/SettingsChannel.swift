@@ -1,6 +1,7 @@
 import Darwin
 import Foundation
 import Security
+import SpaceTabsCore
 
 /// Framed, bounded messages. All IO runs on a serial background queue. Writes
 /// have a timeout; a slow/disconnected helper cannot block the window manager.
@@ -73,7 +74,10 @@ final class SettingsChannel: @unchecked Sendable {
                 }
                 return true
             }
-            if !success { finish() }
+            if !success {
+                DiagnosticLog.shared.record("settings.write-failed", level: "error", details: ["errno": String(errno)])
+                finish()
+            }
         }
     }
     private func read() {
@@ -82,6 +86,9 @@ final class SettingsChannel: @unchecked Sendable {
         let count = recv(fd, &bytes, bytes.count, 0)
         if count < 0 && errno == EINTR { return }
         guard count > 0 else {
+            DiagnosticLog.shared.record(
+                "settings.disconnected",
+                details: ["readResult": String(count), "errno": count < 0 ? String(errno) : "0"])
             finish()
             return
         }
@@ -89,6 +96,7 @@ final class SettingsChannel: @unchecked Sendable {
         while buffer.count >= 4 {
             let length = buffer.prefix(4).reduce(0) { ($0 << 8) | Int($1) }
             guard length > 0, length <= Self.limit else {
+                DiagnosticLog.shared.record("settings.invalid-frame", level: "error")
                 finish()
                 return
             }
@@ -96,6 +104,7 @@ final class SettingsChannel: @unchecked Sendable {
             let data = Data(buffer.dropFirst(4).prefix(length))
             buffer.removeFirst(length + 4)
             guard let value = try? JSONDecoder().decode(SettingsPacket.self, from: data) else {
+                DiagnosticLog.shared.record("settings.invalid-packet", level: "error")
                 finish()
                 return
             }

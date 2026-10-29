@@ -21,6 +21,7 @@ extension AppModel {
                 appliedScreenID = selectedScreenID
             }
         } catch {
+            if !(error is CancellationError) { DiagnosticLog.shared.failure(error, operation: #function) }
             configurationBlocked = true
             message =
                 L10n.tr(
@@ -69,6 +70,7 @@ extension AppModel {
         if sendLayoutPreferences() { return }
         guard !demo, !configurationBlocked else { return }
         do { try checkpoint(tabs: tabs, originals: originals) } catch {
+            if !(error is CancellationError) { DiagnosticLog.shared.failure(error, operation: #function) }
             message = L10n.tr("Could not save the layout: \(error.localizedDescription)")
         }
     }
@@ -91,7 +93,10 @@ extension AppModel {
             configurationBlocked = false
             pendingTabs = []
             message = L10n.tr("Configuration reset. A copy of the previous file was kept, if one existed.")
-        } catch { message = L10n.tr("Could not reset the configuration: \(error.localizedDescription)") }
+        } catch {
+            if !(error is CancellationError) { DiagnosticLog.shared.failure(error, operation: #function) }
+            message = L10n.tr("Could not reset the configuration: \(error.localizedDescription)")
+        }
     }
 
     var runningLaunchDates: [Int32: Date] {
@@ -180,6 +185,7 @@ extension AppModel {
                 try await self.windowManager.applyLayout(frames: frames, selected: selected)
                 if !automatically || revision == 0 { try await self.raiseSelections(selected, revision: revision) }
             } catch {
+                if !(error is CancellationError) { DiagnosticLog.shared.failure(error, operation: #function) }
                 if let failure = error as? WindowError, !failure.recoveryStates.isEmpty {
                     self.tabs = next
                     self.originals = originalStates

@@ -18,7 +18,13 @@ final class AppModel {
     var preferencesBlocked = false
     var loginEnabled = false
     var loginNeedsApproval = false
-    var loginMessage: String?
+    var loginMessage: String? {
+        didSet {
+            if let loginMessage, loginMessage != oldValue {
+                DiagnosticLog.shared.record("notice.loginMessage", details: ["message": loginMessage])
+            }
+        }
+    }
     @ObservationIgnored let preferencesStore: UserPreferencesStore
     // MARK: - App catalog and assignments
 
@@ -29,7 +35,13 @@ final class AppModel {
     @ObservationIgnored var profileLaunchTask: Task<Void, Never>?
     @ObservationIgnored var applicationAssignmentAttempts: [UUID: String] = [:]
     var installedApplications: [InstalledApplication] = []
-    var catalogMessage: String?
+    var catalogMessage: String? {
+        didSet {
+            if let catalogMessage, catalogMessage != oldValue {
+                DiagnosticLog.shared.record("notice.catalogMessage", details: ["message": catalogMessage])
+            }
+        }
+    }
     var launchingApplications = Set<String>()
     @ObservationIgnored var catalogUpdating = false
     @ObservationIgnored var catalogRefreshPending = false
@@ -64,7 +76,13 @@ final class AppModel {
     var lastSpaceChange = L10n.tr("No desktop changes")
     @ObservationIgnored var spaceChangeTask: Task<Void, Never>?
     var managementSuspended: Bool { paused || spaceTransitioning || displayProfileTask != nil }
-    var message: String?
+    var message: String? {
+        didSet {
+            if let message, message != oldValue {
+                DiagnosticLog.shared.record("notice.message", details: ["message": message])
+            }
+        }
+    }
     var titles: [UUID: String] = [:]
     var windows: [WindowSnapshot] = []
     var trusted = PermissionService.trusted
@@ -90,9 +108,28 @@ final class AppModel {
     @ObservationIgnored var workspaceActivationPIDs: Set<Int32> = []
     @ObservationIgnored var workspacePresentationRevision: Int?
     @ObservationIgnored let tabSelectionRunner = TabSelectionRunner()
-    var warnings: [String] = []
-    var accessibilityNotices: [String] = []
-    var shortcutWarnings: [String] = []
+    var warnings: [String] = [] {
+        didSet {
+            for notice in warnings where !oldValue.contains(notice) {
+                DiagnosticLog.shared.record("warning.warnings", level: "warning", details: ["message": notice])
+            }
+        }
+    }
+    var accessibilityNotices: [String] = [] {
+        didSet {
+            for notice in accessibilityNotices where !oldValue.contains(notice) {
+                DiagnosticLog.shared.record(
+                    "warning.accessibilityNotices", level: "warning", details: ["message": notice])
+            }
+        }
+    }
+    var shortcutWarnings: [String] = [] {
+        didSet {
+            for notice in shortcutWarnings where !oldValue.contains(notice) {
+                DiagnosticLog.shared.record("warning.shortcutWarnings", level: "warning", details: ["message": notice])
+            }
+        }
+    }
     var registeredShortcuts: Set<UInt32> = []
     var globalShortcutEventCount = 0
     var shortcutEventCount = 0

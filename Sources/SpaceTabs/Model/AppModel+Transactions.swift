@@ -3,7 +3,9 @@ import SpaceTabsCore
 
 extension AppModel {
     func perform(
-        allowPaused: Bool = false, duringDiscovery: Bool = false, _ work: @escaping @MainActor () async throws -> Void
+        allowPaused: Bool = false, duringDiscovery: Bool = false,
+        file: String = #fileID, function: String = #function, line: Int = #line,
+        _ work: @escaping @MainActor () async throws -> Void
     ) {
         guard !terminating else { return }
         guard !busy, !scanning || duringDiscovery else {
@@ -25,10 +27,17 @@ extension AppModel {
         }
         busy = true
         operationTask = Task {
+            let trace = DiagnosticOperation(
+                function, details: diagnosticContext, file: file, function: function, line: line)
+            defer { trace.finish() }
             do {
                 try await restoreZoom()
                 try await work()
-            } catch is CancellationError {} catch {
+            } catch is CancellationError {
+                DiagnosticLog.shared.record("operation.cancelled", details: ["operation": function])
+            } catch {
+                DiagnosticLog.shared.failure(
+                    error, operation: function, details: diagnosticContext, file: file, function: function, line: line)
                 if let failure = error as? WindowError, !failure.recoveryStates.isEmpty { paused = true }
                 message = error.localizedDescription
             }

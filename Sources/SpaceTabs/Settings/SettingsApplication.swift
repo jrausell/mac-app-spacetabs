@@ -14,11 +14,13 @@ import SwiftUI
 
 @MainActor private final class SettingsAppDelegate: NSObject, NSApplicationDelegate {
     private let model = AppModel()
+    private let responsiveness = ResponsivenessMonitor()
     private var window: NSWindow?
     private var languageObserver: NSObjectProtocol?
     private var localeObserver: NSObjectProtocol?
     private var connectionTask: Task<Void, Never>?
     func applicationDidFinishLaunching(_ notification: Notification) {
+        responsiveness.start()
         let arguments = CommandLine.arguments
         guard let index = arguments.firstIndex(of: "--settings-socket"), arguments.indices.contains(index + 1) else {
             let alert = NSAlert()
@@ -69,6 +71,7 @@ import SwiftUI
         let path = arguments[index + 1]
         connectionTask = Task {
             do { try await remote.connect(path: path) } catch is CancellationError {} catch {
+                DiagnosticLog.shared.failure(error, operation: "settings.connect")
                 let alert = NSAlert()
                 alert.messageText = L10n.tr("Could not connect to SpaceTabs")
                 alert.informativeText = error.localizedDescription
@@ -78,6 +81,9 @@ import SwiftUI
         }
     }
     func applicationWillTerminate(_ notification: Notification) {
+        responsiveness.stop()
+        DiagnosticLog.shared.record("session.end")
+        DiagnosticLog.shared.flush()
         connectionTask?.cancel()
         if let languageObserver { NotificationCenter.default.removeObserver(languageObserver) }
         if let localeObserver { NotificationCenter.default.removeObserver(localeObserver) }

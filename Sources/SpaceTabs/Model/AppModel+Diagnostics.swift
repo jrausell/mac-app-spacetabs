@@ -2,6 +2,26 @@ import AppKit
 import SpaceTabsCore
 
 extension AppModel {
+    var diagnosticContext: [String: String] {
+        [
+            "busy": String(busy), "scanning": String(scanning), "switchingTabs": String(switchingTabs),
+            "paused": String(paused), "desktopTransition": String(spaceTransitioning),
+            "managedWindows": String(originals.count), "pendingTabs": String(pendingTabs.count),
+            "template": layoutTemplate.rawValue, "lastTabClick": lastTabClick,
+        ]
+    }
+
+    // Local log access remains available in Settings when the manager is unresponsive.
+    func revealDiagnosticLogs() { NSWorkspace.shared.open(DiagnosticLog.directory) }
+
+    func copyDiagnosticLogs() {
+        Task {
+            let history = await DiagnosticLog.shared.history()
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(history, forType: .string)
+        }
+    }
+
     func isLoadingTabs(in zone: Zone) -> Bool {
         guard trusted, !demo, !managementSuspended, !configurationBlocked, !terminating else { return false }
         if !hasCompletedDiscovery { return true }
@@ -42,12 +62,14 @@ extension AppModel {
             let counters = await windowManager.discoveryDiagnostics()
             let catalogScans = await applicationCatalog.scanCount
             let geometry = await diagnosticGeometry()
+            let history = await DiagnosticLog.shared.history()
             let report = [
                 status,
                 counters,
                 L10n.tr("Catalog scans: \(catalogScans)"),
                 L10n.tr("Installed apps: \(installedApplications.count)"),
                 geometry,
+                history,
             ].joined(separator: "\n")
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(report, forType: .string)

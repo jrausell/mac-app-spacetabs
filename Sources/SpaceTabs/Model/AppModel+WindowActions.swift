@@ -28,6 +28,7 @@ extension AppModel {
             do {
                 try await self.windowManager.place(id, frame: self.targetFrame(zone))
             } catch {
+                if !(error is CancellationError) { DiagnosticLog.shared.failure(error, operation: #function) }
                 if let failure = error as? WindowError, !failure.recoveryStates.isEmpty {
                     self.originals = originalStates
                     self.tabs = candidate
@@ -120,6 +121,7 @@ extension AppModel {
                     try await self.windowManager.place(replacement, frame: frame)
                     try await self.windowManager.raise(replacement, focus: false)
                 } catch {
+                    if !(error is CancellationError) { DiagnosticLog.shared.failure(error, operation: #function) }
                     self.paused = true
                     throw WindowError(
                         message:
@@ -152,7 +154,10 @@ extension AppModel {
                     try await self.windowManager.restore(id, state: self.safeRestoration(original))
                     self.originals[id] = nil
                     self.tabs.remove(id)
-                } catch { errors.append(error.localizedDescription) }
+                } catch {
+                    if !(error is CancellationError) { DiagnosticLog.shared.failure(error, operation: #function) }
+                    errors.append(error.localizedDescription)
+                }
             }
             if !errors.isEmpty {
                 self.paused = true

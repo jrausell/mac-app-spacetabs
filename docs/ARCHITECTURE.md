@@ -141,6 +141,12 @@ A physical display change is different. A linked profile can apply after a debou
 
 Do not infer native Space membership from an omitted AX window. Public AX discovery is not a native Space identifier API.
 
+## Persistent diagnostics
+
+`DiagnosticLog` writes bounded private JSON-lines history on a serial utility queue, with separate manager/helper files and rotation. Production logging starts in the executable entry point; constructing test models does not enable it. Model notices preserve replaced messages, and error handlers retain typed failures at their catch sites. AX sessions log numeric errors without exporting handles. Operation traces retain caller locations and mark slow transactions, tab selections, and app discovery, including work waiting on other tasks. They do not initiate extra discovery.
+
+Each application delegate owns a `ResponsivenessMonitor`. Its independent utility timer keeps one outstanding main-queue heartbeat, reports a suspected three-second stall and later recovery, and resets samples after long scheduling gaps. It uses cached context and never queries AX. Local log-copy/reveal actions in Settings bypass manager IPC, so they remain available if only the manager stalls. Crash stack capture remains macOS's responsibility.
+
 ## Changes that need special care
 
 Keep bundle identities, saved enum values, shortcut action IDs, and decoder defaults stable. Their source of truth and tests are described in [Configuration](CONFIGURATION.md). Use [Testing](TESTING.md) for real-desktop checks and [Signing](../SIGNING.md) when changing packaging.

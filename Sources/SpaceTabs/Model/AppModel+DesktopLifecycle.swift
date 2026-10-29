@@ -78,6 +78,7 @@ extension AppModel {
                 var errors: [String] = []
                 for (id, original) in self.originals {
                     do { try await self.windowManager.restore(id, state: self.safeRestoration(original)) } catch {
+                        if !(error is CancellationError) { DiagnosticLog.shared.failure(error, operation: #function) }
                         errors.append(error.localizedDescription)
                     }
                 }
@@ -106,11 +107,13 @@ extension AppModel {
         var errors: [String] = []
         if !demo && !configurationBlocked {
             do { try checkpoint(tabs: tabs, originals: originals) } catch {
+                if !(error is CancellationError) { DiagnosticLog.shared.failure(error, operation: #function) }
                 errors.append(L10n.tr("Configuration: \(error.localizedDescription)"))
             }
         }
         for (id, original) in originals {
             do { try await windowManager.restore(id, state: safeRestoration(original)) } catch {
+                if !(error is CancellationError) { DiagnosticLog.shared.failure(error, operation: #function) }
                 errors.append("\(titles[id] ?? L10n.tr("Window")): \(error.localizedDescription)")
             }
         }

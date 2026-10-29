@@ -18,6 +18,13 @@ extension AppModel {
         let selectionStarted = ContinuousClock.now
         tabSelectionRunner.submit { [weak self] in
             guard let self else { return }
+            let trace = DiagnosticOperation(
+                "selectTab",
+                details: [
+                    "window": id.uuidString, "zone": zone.rawValue,
+                    "bundle": windows.first(where: { $0.id == id })?.identity.bundleID ?? "unknown",
+                ])
+            defer { trace.finish() }
             // Geometry/discovery may be in flight. Keep the user's last choice,
             // rather than dropping the click or starting parallel AX operations.
             while busy {
@@ -49,6 +56,7 @@ extension AppModel {
                 selectionTimings.record(selectionStarted.duration(to: .now))
                 message = nil
             } catch is CancellationError {} catch {
+                DiagnosticLog.shared.failure(error, operation: "selectTab", details: diagnosticContext)
                 message = error.localizedDescription
                 if let failure = error as? WindowError, !failure.recoveryStates.isEmpty { paused = true }
             }

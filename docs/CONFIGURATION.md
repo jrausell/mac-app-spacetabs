@@ -21,6 +21,10 @@ These files are local data. They are not scripts, shell commands, or app-launch 
 
 Launch-at-login state comes from `SMAppService`; it is not restored from JSON. Runtime timing samples, active tasks, pending focus revisions, gesture captures, and temporary zoom state are not written to these files.
 
+## Diagnostic history
+
+Runtime problem history is separate from configuration, in `~/Library/Logs/SpaceTabs/`. The manager and Settings each keep a private current JSON-lines file and one previous generation, capped at 1 MiB each (4 MiB total). Writes use a bounded background queue, reject links and unsafe files, and drop excess queued records rather than block the UI. Dropped counts appear in subsequent records. Logs are local, are never executed, and are not uploaded automatically. See [Troubleshooting](TROUBLESHOOTING.md) for sharing and diagnostic limits.
+
 ## Storage boundary
 
 `LocalConfigurationFile` accepts regular files owned by the current user. Reads reject symbolic links, shared write access, and files larger than 2 MiB. Writes use a private temporary file, `fsync`, and atomic rename within the destination directory.
