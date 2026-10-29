@@ -13,16 +13,24 @@
 <p align="center">
   <a href="#get-started">Get started</a> ·
   <a href="#how-it-works">How it works</a> ·
+  <a href="#tab-spaces">Tab Spaces</a> ·
   <a href="#default-controls">Controls</a> ·
   <a href="#contributing">Contributing</a> ·
   <a href="#documentation">Documentation</a>
 </p>
 
-![SpaceTabs layout illustration: separate tab groups in A, B, and C](docs/assets/readme-layout.svg)
+<p align="center">
+  <a href="docs/assets/spacetabs-presentation.mp4">
+    <picture>
+      <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/readme-layout.svg">
+      <img src="docs/assets/spacetabs-presentation.gif" width="960" alt="SpaceTabs animated presentation: organize windows into zones, switch independent tabs, and use keyboard shortcuts">
+    </picture>
+  </a>
+</p>
 
-*Layout illustration, not a screenshot. Colors and app names show the idea; appearance is configurable.*
+[Watch the full 70-second presentation](docs/assets/spacetabs-presentation.mp4). *Animated illustration, not a screen recording.*
 
-SpaceTabs gives each part of your desktop its own group of app windows. Keep notes on the left, your main work in B, and a terminal nearby. Switch tabs inside one zone while the other zones keep their selections.
+SpaceTabs gives each part of your desktop its own group of app windows. Keep notes on the left, your main work in B, and a terminal nearby. Switch tabs inside one zone while the other zones keep their selections. **Choose which windows become tabs, and keep your other apps working as usual.**
 
 Built with **Swift, SwiftUI, AppKit, and the public macOS Accessibility API**. No third-party Swift packages. Your windows stay in their original apps, with the normal macOS menu bar and Dock.
 
@@ -36,6 +44,26 @@ Built with **Swift, SwiftUI, AppKit, and the public macOS Accessibility API**. N
 4. **Bring your workspace back.** Choose SpaceTabs in Command-Tab or click its Dock icon to bring every zone's selected window forward, with final focus in B.
 
 SpaceTabs Settings has its own Dock and Command-Tab entry, so you can return to configuration separately.
+
+## Tab Spaces
+
+A tab space is a group of real app windows in one area of your desktop. The areas are called **zones**, labeled **A**, **B**, and **C**. Each zone has its own tabs and selected window: switch from an editor to a browser in B while your notes in A and terminal in C stay selected.
+
+**Only the windows you choose become tabs.** Keep your other windows and apps independent and use them normally through the Dock, Command-Tab, or a click. You can assign an individual window without assigning every window from that app.
+
+Choose from three layout templates:
+
+| Template | Arrangement |
+| --- | --- |
+| **Two Columns** | A on the left, B on the right. |
+| **A/C on the Left** | A above C on the left, with B on the right. |
+| **A/C on the Right** | B on the left, with A above C on the right. |
+
+**Resize the layout to suit your work.** Drag the width handle to adjust the columns. In either A/C template, drag the height handle to change the split between A and C. B remains the main zone in every template.
+
+![SpaceTabs layout example: Notes and Finder in A, Editor and Browser in B, and Terminal and Messages in C](docs/assets/readme-layout.svg)
+
+*Example: A/C on the Left. Colors and app names illustrate the layout; appearance is configurable.*
 
 ## Make the desktop yours
 
