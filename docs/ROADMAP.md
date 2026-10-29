@@ -4,7 +4,6 @@ This is a direction, not a release promise. Implemented behavior belongs in the 
 
 ## Before a public release
 
-- Choose an open-source license and add the complete license text.
 - Confirm rights to the supplied icons and add any required asset attribution.
 - Choose a repository URL and a private channel for security reports.
 - Run the prepared CI workflow on the hosted repository.
@@ -13,7 +12,7 @@ This is a direction, not a release promise. Implemented behavior belongs in the 
 - Decide how signed/notarized releases and updates will be distributed.
 - Add screenshots or a short demo from the tested release.
 
-The current source is not yet presented as a published, licensed open-source release. No repository, license, security address, or download link is invented in the docs.
+The source code is licensed under [GNU GPLv3](../LICENSE). Public binary releases still depend on the remaining asset, signing, distribution, and desktop checks. A security contact and release download links still need to be selected.
 
 ## Engineering priorities
 

@@ -76,4 +76,4 @@ State what changed, why, and what was verified. Separate compilation, automated 
 
 App packaging is `Scripts/build-app.sh release`. If signing fails, say that `dist` still contains the previous app. Do not silently switch to ad hoc signing or claim an app was updated.
 
-There is no selected open-source license yet. Do not invent a license, repository URL, release status, or security contact. Use `docs/ROADMAP.md` for the remaining publication decisions.
+SpaceTabs source code is licensed under GNU GPL version 3; see `LICENSE`. Keep licensing statements consistent with that choice. Do not invent a repository URL, release status, or security contact. Use `docs/ROADMAP.md` for the remaining publication decisions.

@@ -34,7 +34,7 @@ SpaceTabs gives each part of your desktop its own group of app windows. Keep not
 
 Built with **Swift, SwiftUI, AppKit, and the public macOS Accessibility API**. No third-party Swift packages. Your windows stay in their original apps, with the normal macOS menu bar and Dock.
 
-**Status:** working prototype for macOS 15+. Source builds are available; public release preparation is in progress. The current app manages **one selected display at a time**. An open-source license is still being selected.
+**Status:** working prototype for macOS 15+. Source builds are available; public release preparation is in progress. The current app manages **one selected display at a time**. The source code is available under [GNU GPLv3](LICENSE).
 
 ## How it works
 
@@ -162,7 +162,7 @@ Useful bug reports and focused proposals are welcome. Include reproduction steps
 
 Unsolicited PRs, cosmetic-only changes, unrelated refactors, and bulk generated fixes may be closed without review. Contributions made mainly to collect a credit or contributor badge are not a fit for this project. AI-assisted work must be reviewed, understood, and tested by its author.
 
-You are welcome to explore the code and, once a license is selected, use and fork it under that license. Upstream inclusion and maintainer access are separate decisions. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full policy and checks; coding agents should also read [AGENTS.md](AGENTS.md).
+You are welcome to use, modify, and fork the code under [GNU GPLv3](LICENSE). Upstream inclusion and maintainer access are separate decisions. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full policy and checks; coding agents should also read [AGENTS.md](AGENTS.md).
 
 ## Documentation
 
@@ -183,7 +183,9 @@ You are welcome to explore the code and, once a license is selected, use and for
 
 Created and maintained by **Jorge Rausell**. Find more projects at [captainx.team](https://captainx.team) and follow [@jrausell](https://x.com/jrausell).
 
-SpaceTabs is intended to be open source. The license is being selected; until a `LICENSE` file is added, this repository does not grant an open-source license. Asset permissions also need confirmation before public release.
+SpaceTabs source code is licensed under the **GNU General Public License, version 3 (GPLv3)**. See [LICENSE](LICENSE) for the full terms. Remaining asset and distribution checks are tracked in the [release roadmap](docs/ROADMAP.md).
+
+If SpaceTabs helps you, [let me know how you use it](https://x.com/jrausell). A shout-out or link back is always appreciated, and entirely optional.
 
 ## Inspiration and related projects
 

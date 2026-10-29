@@ -64,6 +64,6 @@ Automated tests request an ad hoc linker signature for their own transport ident
 
 ## Public distribution
 
-Development signing is not a complete public-release process. A release still needs a selected license, confirmed asset permissions, a distribution signing/notarization plan, and actual desktop validation. None of these steps is performed automatically by CI.
+Development signing is not a complete public-release process. The source code license is [GNU GPLv3](LICENSE). A public release still needs confirmed asset permissions, a distribution signing/notarization plan, and actual desktop validation. None of these steps is performed automatically by CI.
 
 Background: [Apple TN3127, code-signing requirements](https://developer.apple.com/documentation/technotes/tn3127-inside-code-signing-requirements).

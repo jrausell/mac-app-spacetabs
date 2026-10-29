@@ -1,6 +1,6 @@
 # Contributing
 
-SpaceTabs is being prepared for public release. The code, documentation, and translation keys use plain English; the app includes English and Spanish. See [Localization](docs/LOCALIZATION.md) before changing app text. A license has not yet been selected; release preparation does not itself grant an open-source license.
+SpaceTabs is being prepared for public release. The code, documentation, and translation keys use plain English; the app includes English and Spanish. See [Localization](docs/LOCALIZATION.md) before changing app text. The source code is licensed under [GNU GPLv3](LICENSE).
 
 ## Discuss before opening a pull request
 
@@ -15,7 +15,7 @@ Unsolicited PRs may be closed without review. Cosmetic-only edits, typo sweeps, 
 
 Useful comments add evidence, reproduction details, or relevant tradeoffs. Use reactions to express support; avoid repeated requests, duplicate reports, promotional comments, or messages that only ask for credit. Disruptive or off-topic comments may be hidden or removed. No review timeline or merge is promised.
 
-The maintainer decides project direction and upstream inclusion. An accepted contribution does not grant collaborator access or a maintainer role. Licensing and the right to fork are separate from this contribution process; follow the repository's license once one is selected.
+The maintainer decides project direction and upstream inclusion. An accepted contribution does not grant collaborator access or a maintainer role. Licensing and the right to fork are separate from this contribution process; follow the terms of [GNU GPLv3](LICENSE).
 
 ## Set up
 
