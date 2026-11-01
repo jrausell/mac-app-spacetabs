@@ -3,7 +3,7 @@
 > If you use X.com, check out my other projects at [captainx.team](https://captainx.team). Follow my open-source ideas and side projects on [X · @jrausell](https://x.com/jrausell).
 
 <p align="center">
-  <img src="Resources/icon-main.png" width="112" height="112" alt="SpaceTabs app icon">
+  <img src="Resources/icon-main-transparent.png" width="112" height="112" alt="SpaceTabs app icon">
 </p>
 
 <h2 align="center">Your windows. Your zones. One desktop.</h2>
@@ -28,7 +28,7 @@
   </a>
 </p>
 
-[Watch the full 70-second presentation](docs/assets/spacetabs-presentation.mp4). *Animated illustration, not a screen recording.*
+[Watch the full 70-second presentation](docs/assets/spacetabs-presentation.mp4) · 2560 × 1440, 30 fps. *Animated illustration, not a screen recording.*
 
 SpaceTabs gives each part of your desktop its own group of app windows. Keep notes on the left, your main work in B, and a terminal nearby. Switch tabs inside one zone while the other zones keep their selections. **Choose which windows become tabs, and keep your other apps working as usual.**
 
@@ -172,6 +172,7 @@ You are welcome to use, modify, and fork the code under [GNU GPLv3](LICENSE). Up
 | --- | --- |
 | [Profiles and monitors](docs/MONITORS.md) | Select a screen, save profiles, and handle disconnects and reconnects. |
 | [Architecture](docs/ARCHITECTURE.md) | Source map, ownership, concurrency, and behavior contracts. |
+| [Presentation video](docs/storyboard/VIDEO.md) | Render the illustrated desktop demo and its original soundtrack. |
 | [Localization](docs/LOCALIZATION.md) | Language selection, translation catalogs, and adding a language. |
 | [Development](docs/DEVELOPMENT.md) | Toolchain, scripts, formatting, and CI. |
 | [Configuration](docs/CONFIGURATION.md) | Local files, validation, compatibility, and data safety. |
