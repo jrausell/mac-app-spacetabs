@@ -21,4 +21,12 @@ public struct WindowServerWindow: Sendable {
         // Never infer an identity from overlapping, indistinguishable windows.
         return candidates.count == 1 ? candidates.first?.number : nil
     }
+
+    /// AX wrappers can change without creating a new native window. Reuse only
+    /// a unique process/window-number identity, never a page title or URL.
+    public static func existingID(for number: UInt32?, pid: Int32, snapshots: [WindowSnapshot]) -> UUID? {
+        guard let number, number != 0 else { return nil }
+        let matches = snapshots.filter { $0.pid == pid && $0.windowNumber == number }
+        return matches.count == 1 ? matches.first?.id : nil
+    }
 }

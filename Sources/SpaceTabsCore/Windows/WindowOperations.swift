@@ -31,7 +31,10 @@ public struct WindowOperations<Backend: WindowAccess>: Sendable {
         if state.minimized { try await setMinimized(id, true) }
     }
 
-    public func execute(_ commands: [WindowCommand]) async throws {
+    public func execute(
+        _ commands: [WindowCommand], settling: Set<UUID> = [],
+        isCurrent: @Sendable () async -> Bool = { true }
+    ) async throws {
         var before: [UUID: OriginalWindowState] = [:]
         for command in commands where before[command.id] == nil { before[command.id] = try await snapshot(command.id) }
         var touched: [UUID] = []
@@ -71,6 +74,27 @@ public struct WindowOperations<Backend: WindowAccess>: Sendable {
                     throw error
                 }
                 if mutated && !touched.contains(command.id) { touched.append(command.id) }
+            }
+            // Some apps restore saved geometry after first accepting AX writes.
+            // Only explicit startup/recovery placements opt into two finite
+            // checks. Normal tab selection and manual geometry remain alone.
+            if !settling.isEmpty {
+                for delay: Duration in [.milliseconds(300), .milliseconds(700)] {
+                    try await wait(delay)
+                    try Task.checkCancellation()
+                    guard await isCurrent() else { return }
+                    for command in commands where settling.contains(command.id) {
+                        guard case .place(let id, let frame) = command else { continue }
+                        attemptedWindow = id
+                        let actual = try await retryFrame(id)
+                        guard await isCurrent() else { return }
+                        if LayoutEngine.accepts(actual: actual, target: frame) { continue }
+                        try await retry { try await backend.validatePlacement(id) }
+                        guard await isCurrent() else { return }
+                        if !touched.contains(id) { touched.append(id) }
+                        try await move(id, target: frame)
+                    }
+                }
             }
         } catch {
             var failed: [UUID: OriginalWindowState] = [:]

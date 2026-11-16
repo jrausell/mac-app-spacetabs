@@ -34,7 +34,7 @@ SpaceTabs gives each part of your desktop its own group of app windows. Keep not
 
 Built with **Swift, SwiftUI, AppKit, and the public macOS Accessibility API**. No third-party Swift packages. Your windows stay in their original apps, with the normal macOS menu bar and Dock.
 
-**Status:** working prototype for macOS 15+. Source builds are available; public release preparation is in progress. The current app manages **one selected display at a time**. The source code is available under [GNU GPLv3](LICENSE).
+**Status:** working prototype for macOS 15+. Source builds are available; public release preparation is in progress. The current source adds **experimental independent workspaces per monitor and macOS desktop**; real desktop validation is in progress. The source code is available under [GNU GPLv3](LICENSE).
 
 ## How it works
 
@@ -43,7 +43,13 @@ Built with **Swift, SwiftUI, AppKit, and the public macOS Accessibility API**. N
 3. **Switch within each zone.** Click a tab to bring its window forward. Other tabs stay open without being minimized.
 4. **Bring your workspace back.** Choose SpaceTabs in Command-Tab or click its Dock icon to bring every zone's selected window forward, with final focus in B.
 
-SpaceTabs Settings has its own Dock and Command-Tab entry, so you can return to configuration separately.
+SpaceTabs uses one Dock and Command-Tab entry. After restoring your selected windows, it brings Settings to the front if you left its window open. Closed Settings stays closed; open it from the SpaceTabs menu or a zone's + button.
+
+Rename a workspace with the pencil beside the Settings workspace selector; rename a profile from its **… → Rename…** menu.
+
+For illustrated examples of profiles, workspaces, monitors, and macOS desktops, open **Settings → How To** or the question-mark button in the SpaceTabs menu. The menu shows layout thumbnails and per-workspace Show/Restore buttons. See the [visual guide](docs/HOW_TO.md).
+
+The bundled **SpaceTabs Desktop Menu** extension is experimental. **Its menu is not appearing on the maintainer’s iCloud-synced Desktop:** macOS can suppress Finder Sync menus in file-provider locations. Settings reports the iCloud limitation; use **SpaceTabs → Workspaces** for Open here, Show, and Restore. See [Desktop menu](docs/DESKTOP_MENU.md) for evidence, activation, and remaining tests.
 
 ## Tab Spaces
 
@@ -76,11 +82,11 @@ Choose from three layout templates:
 | Drag to organize | Reorder tabs, move them between zones, or assign a window with a modified drag. |
 | Keyboard control | Customize shortcuts, navigate between zones, and search tabs and profiles. |
 | Focused-window zoom | Temporarily expand the focused managed window, then restore its previous size. |
-| Local profiles | Save layouts, tab selections, and app assignments. Link a profile to a display setup. |
+| Workspaces and profiles | Separate tabs and layouts per monitor/desktop, saved assignments, and per-workspace Show/Restore. |
 | Languages | Follow your Mac automatically, or choose English or Español in Settings. |
 | Everyday options | Name zones, start at login, and inspect persistent problem logs when an app behaves differently. |
 
-Assigning a closed app saves a rule without launching it. Compatible windows can join the assigned zone when you open that app. Switch saved setups from **SpaceTabs → Profiles** in the menu bar or from Settings. Each profile can optionally open closed assigned apps when you switch manually; automatic display-profile changes keep closed apps closed. See [Profiles and monitors](docs/MONITORS.md) for the save-and-switch flow.
+Assigning a closed app saves a rule without launching it. Compatible windows can join the assigned zone when you open that app. Create independent setups from **SpaceTabs → Workspaces → New workspace on [display]…**. Open saved profiles in their own workspace from Profiles. After restarting SpaceTabs, choose **Open here** on each intended native desktop. See [Profiles and monitors](docs/MONITORS.md) for the save-and-switch flow.
 
 ## Get started
 
@@ -99,7 +105,7 @@ Scripts/build-app.sh release
 open dist/SpaceTabs.app
 ```
 
-This packages SpaceTabs and its Settings helper. Use the packaged app as your normal installation so both app identities and icons are available.
+This packages SpaceTabs and its Settings helper. Use the packaged app as your normal installation so the manager and its Settings helper work together.
 
 Without a configured certificate, builds use an ad hoc signature and macOS may ask for Accessibility access again after updates. For regular development, configure a stable identity using the [signing guide](SIGNING.md). If signing fails, the previous app in `dist` is kept.
 
@@ -117,7 +123,7 @@ Scripts/build.sh release
 4. Tap **Control + Option + Command** together, then release all three to show the tab bars and switch tabs.
 5. Save your setup in **Profiles**. Use **Release** when you want a window back outside the layout.
 
-For an external screen, see [Profiles and monitors](docs/MONITORS.md). Profiles can switch between display setups; independent layouts on multiple displays at once are not implemented yet.
+For an external screen, see [Profiles and monitors](docs/MONITORS.md). Use the Workspaces menu to create a separate workspace on each monitor and desktop. Desktop associations require explicit **Open here** after restarting SpaceTabs.
 
 ## Default controls
 
@@ -170,6 +176,8 @@ You are welcome to use, modify, and fork the code under [GNU GPLv3](LICENSE). Up
 
 | Guide | What it covers |
 | --- | --- |
+| [Visual workspace guide](docs/HOW_TO.md) | Illustrated examples and the distinction between profiles and workspaces. |
+| [Desktop right-click menu](docs/DESKTOP_MENU.md) | Enable the Finder extension and access workspace actions on each monitor. |
 | [Profiles and monitors](docs/MONITORS.md) | Select a screen, save profiles, and handle disconnects and reconnects. |
 | [Architecture](docs/ARCHITECTURE.md) | Source map, ownership, concurrency, and behavior contracts. |
 | [Presentation video](docs/storyboard/VIDEO.md) | Render the illustrated desktop demo and its original soundtrack. |

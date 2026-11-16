@@ -40,6 +40,7 @@ extension AppModel {
             try ShortcutManager.validateBindings(value.shortcuts)
             try preferencesStore.save(value)
             preferences = value
+            preferencesCommitted?(value)
             return true
         } catch {
             if !(error is CancellationError) { DiagnosticLog.shared.failure(error, operation: #function) }
@@ -59,6 +60,7 @@ extension AppModel {
             try preferencesStore.save(UserPreferences())
             preferencesBlocked = false
             preferences = UserPreferences()
+            preferencesCommitted?(preferences)
             restartShortcuts()
             layoutChanged()
             message = L10n.tr("Preferences reset. A copy of the previous file was kept.")

@@ -2,9 +2,21 @@ import AppKit
 import SpaceTabsCore
 
 extension AppModel {
-    func assign(_ id: UUID, to zone: Zone, requestFocus: Bool = true, duringDiscovery: Bool = false) {
-        if sendToManager(.assign(id, zone)) { return }
-        guard activeZones.contains(zone) else { return }
+    func assign(
+        _ id: UUID, to zone: Zone, requestFocus: Bool = true, duringDiscovery: Bool = false,
+        replacingPending savedID: UUID? = nil
+    ) {
+        if let savedID {
+            if sendToManager(.synchronizePendingWindow(savedID, id)) { return }
+            guard let saved = pendingTabs.first(where: { $0.id == savedID }), saved.zone == zone,
+                windows.contains(where: { $0.id == id && $0.identity.bundleID == saved.identity.bundleID })
+            else { return }
+        } else if sendToManager(.assign(id, zone)) {
+            return
+        }
+        guard activeZones.contains(zone), windows.first(where: { $0.id == id }).map(eligibleWindow) ?? demo else {
+            return
+        }
         if demo {
             tabs.assign(id, to: zone)
             layoutChanged()
@@ -14,31 +26,64 @@ extension AppModel {
         guard tabs.zone(of: id) == nil else { return }
         suppressAutomaticAssignment(for: id)
         let revision = userChoseWindow(in: zone)
+        let desktop = desktopRevision
+        let placementInput = PlacementInputSnapshot.capture()
         perform(duringDiscovery: duringDiscovery) {
+            guard self.windows.first(where: { $0.id == id }).map(self.eligibleWindow) == true else {
+                throw CancellationError()
+            }
             let original = try await self.windowManager.state(of: id)
+            if savedID != nil {
+                guard self.desktopRevision == desktop, !self.managementSuspended else { throw CancellationError() }
+            }
             var candidate = self.tabs
             candidate.assign(id, to: zone)
             var originalStates = self.originals
             originalStates[id] = original
             let matches = WindowReconciler.matches(
                 saved: self.pendingTabs, windows: self.windows, launchDates: self.runningLaunchDates)
-            try self.checkpoint(
-                tabs: candidate, originals: originalStates,
-                excludingPending: Set(matches.filter { $0.value == id }.keys))
+            let replaced = savedID.map { Set([$0]) } ?? Set(matches.filter { $0.value == id }.keys)
+            let oldOrder = self.savedTabOrder
             do {
-                try await self.windowManager.place(id, frame: self.targetFrame(zone))
+                if let savedID { self.savedTabOrder = oldOrder.map { $0 == savedID ? id : $0 } }
+                try self.checkpoint(tabs: candidate, originals: originalStates, excludingPending: replaced)
+                let frame = try self.targetFrame(zone)
+                if self.needsPlacementSettlement(id, recovering: savedID != nil) {
+                    try await self.windowManager.placeSettling(id, frame: frame) { [weak self] in
+                        await MainActor.run {
+                            self?.placementIsCurrent(
+                                zone: zone, target: frame, desktop: desktop, interaction: revision,
+                                input: placementInput)
+                                == true
+                        }
+                    }
+                } else {
+                    try await self.windowManager.place(id, frame: frame)
+                }
             } catch {
                 if !(error is CancellationError) { DiagnosticLog.shared.failure(error, operation: #function) }
                 if let failure = error as? WindowError, !failure.recoveryStates.isEmpty {
                     self.originals = originalStates
                     self.tabs = candidate
-                    self.removePendingMatch(for: id)
+                    if let savedID {
+                        self.pendingTabs.removeAll { $0.id == savedID }
+                    } else {
+                        self.removePendingMatch(for: id)
+                    }
+                } else {
+                    self.savedTabOrder = oldOrder
                 }
                 throw error
             }
             self.originals[id] = original
             self.tabs.assign(id, to: zone)
-            self.removePendingMatch(for: id)
+            if let savedID {
+                self.pendingTabs.removeAll { $0.id == savedID }
+                self.pendingWindowChoices[savedID] = nil
+                try await self.windowManager.raise(id, focus: false)
+            } else {
+                self.removePendingMatch(for: id)
+            }
             self.activeZone = zone
             // Configuration places the window without activating its app.
             self.layoutChanged()
@@ -48,6 +93,10 @@ extension AppModel {
     }
 
     func assignDraggedWindow(_ snapshot: WindowSnapshot, to destination: Zone) {
+        guard eligibleWindow(snapshot) else {
+            message = L10n.tr("This window belongs to another workspace or is not available on this desktop.")
+            return
+        }
         guard activeZones.contains(destination), !busy,
             !managementSuspended, !terminating, !demo, trusted
         else {

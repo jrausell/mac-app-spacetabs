@@ -59,7 +59,7 @@ public enum L10n {
         // and tests; a packaged app never depends on a developer's build directory.
         let packaged = Bundle.main.resourceURL?.appendingPathComponent("SpaceTabs_SpaceTabsCore.bundle")
         let bundle: Bundle?
-        if Bundle.main.bundleURL.pathExtension == "app" {
+        if ["app", "appex"].contains(Bundle.main.bundleURL.pathExtension) {
             bundle = packaged.flatMap(Bundle.init(url:))
         } else {
             bundle = Bundle.module

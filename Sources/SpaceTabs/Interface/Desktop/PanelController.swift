@@ -168,7 +168,7 @@ final class PanelController {
 
     private func setVisible(_ panel: NSPanel, visible: Bool, animated: Bool) {
         let id = ObjectIdentifier(panel)
-        if animated, visibilityTargets[id] == visible { return }
+        if animated, visibilityTargets[id] == visible, !visible || panel.isVisible { return }
         visibilityTargets[id] = visible
         let revision = transitionRevisions[id, default: 0] &+ 1
         transitionRevisions[id] = revision
@@ -205,6 +205,21 @@ final class PanelController {
         localMouseMonitor = nil
         for observer in menuObservers { NotificationCenter.default.removeObserver(observer) }
         menuObservers.removeAll()
+        // Reopening a workspace may bind to another native desktop. Recreate
+        // its controls there instead of reusing windows tied to the old desktop.
+        for panel in Array(bars.values) + Array(demos.values) + [divider, rowDivider, resizeGuide].compactMap({ $0 }) {
+            panel.close()
+        }
+        bars.removeAll()
+        demos.removeAll()
+        divider = nil
+        rowDivider = nil
+        resizeGuide = nil
+        resizeHandle = nil
+        rowResizeHandle = nil
+        visibilityTargets.removeAll()
+        transitionRevisions.removeAll()
+        visibility = TabBarVisibility()
     }
 
     func update(model: AppModel, screen: NSScreen) {
@@ -337,7 +352,7 @@ final class PanelController {
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = true
-        panel.collectionBehavior = [.moveToActiveSpace, .fullScreenNone]
+        panel.collectionBehavior = [.managed, .fullScreenNone]
         return panel
     }
 }

@@ -7,10 +7,15 @@ actor WindowServerCatalog {
     nonisolated var unownedExecutor: UnownedSerialExecutor { executor.asUnownedSerialExecutor() }
 
     func windows() -> [WindowServerWindow] { Self.read() }
+    func visibleWindows() -> [WindowServerWindow] {
+        Self.read(options: [.optionOnScreenOnly, .excludeDesktopElements])
+    }
 
-    nonisolated static func read() -> [WindowServerWindow] {
+    nonisolated static func read(options: CGWindowListOption = [.optionAll, .excludeDesktopElements])
+        -> [WindowServerWindow]
+    {
         guard
-            let list = CGWindowListCopyWindowInfo([.optionAll, .excludeDesktopElements], kCGNullWindowID)
+            let list = CGWindowListCopyWindowInfo(options, kCGNullWindowID)
                 as? [[String: Any]]
         else { return [] }
         return list.compactMap { info in

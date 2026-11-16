@@ -6,15 +6,13 @@ extension AppModel {
     /// Cheap environment check only. It never enumerates windows unless the
     /// permission actually changes from denied to granted.
     func checkEnvironment() {
+        updateDisplayAvailability()
         if let screen {
             let frame = layoutVisibleFrame(on: screen)
             if let previous = lastVisibleFrame, previous != frame, !managementSuspended, !terminating {
                 layoutPreferenceChanged()
             }
-            lastVisibleFrame = frame
-        } else if !managementSuspended, !busy, pendingAutomaticProfile == nil {
-            suspendForDesktopChange(
-                L10n.tr("The selected display is unavailable. Choose another display and select Resume."))
+            if !managementSuspended || lastVisibleFrame == nil { lastVisibleFrame = frame }
         }
         let wasTrusted = trusted
         trusted = PermissionService.trusted
@@ -35,10 +33,11 @@ extension AppModel {
 
     private func queueInitialDiscovery() {
         let autoLayout = linkedProfile?.layout
-        let savedBundles = Set(
-            pendingTabs.map { $0.identity.bundleID } + applicationAssignments.map(\.bundleID)
-                + (autoLayout?.tabs.map { $0.identity.bundleID } ?? [])
-                + (autoLayout?.applicationAssignments.map(\.bundleID) ?? []))
+        var savedBundles = Set(pendingTabs.map { $0.identity.bundleID })
+        savedBundles.formUnion(applicationAssignments.map(\.bundleID))
+        savedBundles.formUnion(autoLayout?.tabs.map { $0.identity.bundleID } ?? [])
+        savedBundles.formUnion(autoLayout?.applicationAssignments.map(\.bundleID) ?? [])
+        savedBundles.formUnion(discoveryBundles?() ?? [])
         let running = Dictionary(
             uniqueKeysWithValues: NSWorkspace.shared.runningApplications
                 .filter { !$0.isTerminated && $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }
@@ -52,6 +51,10 @@ extension AppModel {
     }
 
     func startInitialDiscovery() {
+        if let discoveryOwner {
+            discoveryOwner.refresh()
+            return
+        }
         checkEnvironment()
         guard trusted, !demo, !terminating, !refreshInFlight, !hasCompletedDiscovery else { return }
         queueInitialDiscovery()
@@ -105,6 +108,18 @@ extension AppModel {
     }
 
     func scheduleRefresh() {
+        if let discoveryOwner {
+            if let batch = refreshRequests.take() {
+                if batch.fullDiscovery {
+                    discoveryOwner.refreshRequests.requestDiscovery()
+                } else {
+                    for pid in batch.processIDs { discoveryOwner.refreshRequests.requestDiscovery(pid: pid) }
+                }
+                if let pid = batch.focusPID { discoveryOwner.refreshRequests.requestFocus(pid: pid) }
+                discoveryOwner.scheduleRefresh()
+            }
+            return
+        }
         guard !refreshRequests.isEmpty, refreshTask == nil, !busy, !refreshInFlight, !demo, !terminating, trusted else {
             return
         }
@@ -123,12 +138,15 @@ extension AppModel {
         refreshInFlight = true
         let needsDiscovery = batch.needsDiscovery
         scanning = needsDiscovery
+        let savedBundles = Set(pendingTabs.map { $0.identity.bundleID } + applicationAssignments.map(\.bundleID)).union(
+            discoveryBundles?() ?? [])
         let apps =
             needsDiscovery
             ? NSWorkspace.shared.runningApplications.filter { app in
                 app.processIdentifier != ProcessInfo.processInfo.processIdentifier
                     && app.bundleIdentifier != SettingsHost.helperID && !app.isTerminated
-                    && (app.activationPolicy == .regular
+                    && (app.activationPolicy == .regular || batch.processIDs.contains(app.processIdentifier)
+                        || savedBundles.contains(app.bundleIdentifier ?? "")
                         || windows.contains(where: { $0.pid == app.processIdentifier }))
             }.map {
                 ApplicationDescriptor(
@@ -138,7 +156,9 @@ extension AppModel {
         scanTask = Task {
             if needsDiscovery {
                 lastDiscovery = .now
-                let result = await windowManager.scan(apps: apps, only: batch.fullDiscovery ? nil : batch.processIDs)
+                var result = await windowManager.scan(apps: apps, only: batch.fullDiscovery ? nil : batch.processIDs)
+                result.visibleWindows = await WindowServerCatalog().visibleWindows()
+                discoveryPublished?(result, batch.fullDiscovery)
                 // A discovery can finish while the user is switching a known tab.
                 // Commit structural changes after that transaction, not during it.
                 while busy && !terminating {
@@ -149,7 +169,10 @@ extension AppModel {
             } else {
                 let focused = batch.focusPID != nil ? await windowManager.focusedManagedID() : nil
                 scanning = false
-                if !terminating { adoptFocus(focused) }
+                if !terminating {
+                    adoptFocus(focused)
+                    focusPublished?(focused)
+                }
             }
             scanning = false
             refreshInFlight = false
@@ -170,6 +193,7 @@ extension AppModel {
         // Do not label an interrupted/unauthorized search as zero matches.
         trusted = PermissionService.trusted
         hasCompletedDiscovery = trusted
+        retainUnavailableAssignments(Set(result.removed))
         // A user can adopt a dragged window while a slow, unrelated discovery
         // is still running. An older snapshot must not discard that adoption.
         let scannedIDs = Set(result.windows.map(\.id))
@@ -211,8 +235,8 @@ extension AppModel {
         if removedManaged { saveLayout() }
     }
 
-    private func adoptFocus(_ id: UUID?) {
-        guard !busy, !tabSelectionRunner.isPending, !paused, let id, let zone = tabs.zone(of: id),
+    func adoptFocus(_ id: UUID?) {
+        guard !busy, !tabSelectionRunner.isPending, !managementSuspended, let id, let zone = tabs.zone(of: id),
             let window = windows.first(where: { $0.id == id }),
             NSWorkspace.shared.frontmostApplication?.processIdentifier == window.pid
         else { return }

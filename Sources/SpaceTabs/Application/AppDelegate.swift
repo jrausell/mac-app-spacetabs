@@ -1,15 +1,19 @@
 import AppKit
+import FinderSync
 import SpaceTabsCore
 import SwiftUI
 
 private final class SavedProfilesMenu: NSMenu {}
+private final class WorkspacesMenu: NSMenu {}
+private final class StatusDashboardMenu: NSMenu {}
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var item: NSStatusItem?
-    private let model = AppModel()
+    private let discoveryModel = AppModel()
+    private lazy var workspaces = WorkspaceCoordinator(discovery: discoveryModel)
+    private var model: AppModel { workspaces.selected }
     private let responsiveness = ResponsivenessMonitor()
-    private let panels = PanelController()
     private let windowDrag = WindowDragController()
     private let rightDrag = RightButtonDragController()
     private let quickSwitcher = QuickSwitcher()
@@ -26,6 +30,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var activationPolicy = WorkspaceActivationPolicy()
     private var screenTopology: [String: CGRect] = [:]
     private var localizationObservers: [NSObjectProtocol] = []
+    private var desktopMenuCompatibilityTask: Task<Void, Never>?
+    private var desktopMenuReady = false
+    private var pendingDesktopURLs: [URL] = []
+    private lazy var desktopMenuBridge = DesktopMenuBridge(
+        snapshot: { [weak self] token, context in
+            guard let self else {
+                return DesktopMenuSnapshot(
+                    token: token, context: context, managerPID: 0, launchDate: nil,
+                    language: .english, ready: false, workspaces: [], profiles: [])
+            }
+            let entries = self.workspaces.document.records.map { record in
+                let runtime = self.workspaces.runtimes[record.id]
+                let model = runtime?.model
+                return DesktopMenuWorkspace(
+                    id: record.id, name: record.name, profileID: record.profileID,
+                    displayID: record.displayID, isOpen: runtime?.anchor != nil,
+                    isHere: model?.workspaceDesktopAvailable == true,
+                    canRestore: model.map {
+                        $0.trusted && !$0.managementSuspended && !$0.busy && !$0.scanning && !$0.terminating
+                    } ?? false)
+            }
+            let preferences = self.discoveryModel.preferences
+            return DesktopMenuSnapshot(
+                token: token, context: context,
+                managerPID: ProcessInfo.processInfo.processIdentifier,
+                launchDate: NSRunningApplication.current.launchDate,
+                language: preferences.language,
+                ready: !self.terminationPending && !self.model.configurationBlocked
+                    && !self.workspaces.models.contains {
+                        $0.spaceTransitioning || $0.displayProfileTask != nil
+                    }, workspaces: entries,
+                profiles: preferences.profiles.map { DesktopMenuProfile(id: $0.id, name: $0.name) })
+        }, perform: { [weak self] request in self?.performDesktopMenu(request) })
     private var activationTask: Task<Void, Never>?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -35,46 +72,77 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) { NSApp.terminate(nil) }
             return
         }
-        model.loadConfiguration()
-        model.loadUserPreferences()
+        discoveryModel.loadConfiguration()
+        discoveryModel.loadUserPreferences()
         model.refreshLoginStatus()
-        model.pendingAutomaticProfile = model.linkedProfile?.id
+        workspaces.presentationChanged = { [weak self] _ in
+            self?.windowDrag.update()
+            self?.rightDrag.update()
+        }
+        workspaces.configureModel = { [weak self] model in
+            guard let self else { return }
+            model.restartShortcuts = { [weak self] in self?.registerShortcuts() }
+            model.openSettings = { [weak self, weak model] in
+                guard let self, let id = model?.workspaceID else { return }
+                self.workspaces.select(id)
+                self.showSettings()
+            }
+            model.showQuickSwitcher = { [weak self, weak model] in
+                guard let self, let model else { return }
+                self.quickSwitcher.show(model: model)
+            }
+        }
+        workspaces.selectionChanged = { [weak self] model in
+            guard let self else { return }
+            self.windowDrag.stop()
+            self.rightDrag.stop()
+            self.windowDrag.start(model: model)
+            self.rightDrag.start(model: model)
+            self.settingsHost.useModel(model)
+        }
+        windowDrag.modelAtPoint = { [weak self] point in
+            self?.workspaces.models.first { $0.workspaceDesktopAvailable && $0.screen?.frame.contains(point) == true }
+        }
+        rightDrag.modelAtPoint = windowDrag.modelAtPoint
+        workspaces.registryChanged = { [weak self] in
+            guard let self, self.desktopMenuReady else { return }
+            self.desktopMenuBridge.refresh()
+        }
+        workspaces.start()
+        refreshDesktopMenuCompatibility()
         screenTopology = currentScreenTopology()
-        panels.start()
         windowDrag.start(model: model)
         rightDrag.start(model: model)
-        model.catalogMonitor.changed = { [weak self] in self?.model.refreshApplications() }
-        model.tabDragVisibility = { [weak self] in self?.panels.setTabDragging($0) }
-        model.showTabBars = { [weak self] in self?.panels.reveal() }
+        discoveryModel.catalogMonitor.changed = { [weak self] in self?.discoveryModel.refreshApplications() }
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item?.button?.image = NSImage(systemSymbolName: "rectangle.split.2x1", accessibilityDescription: "SpaceTabs")
         item?.button?.toolTip = "SpaceTabs"
         installStatusMenu()
         installMainMenu()
         observeLanguage()
-        shortcuts.handler = { [weak self] action in self?.model.handleShortcut(action) }
-        model.restartShortcuts = { [weak self] in self?.registerShortcuts() }
-        registerShortcuts()
-        model.showQuickSwitcher = { [weak self] in
+        shortcuts.handler = { [weak self] action in
             guard let self else { return }
-            quickSwitcher.show(model: model)
-        }
-        model.openSettings = { [weak self] in self?.showSettings() }
-        model.layoutChanged = { [weak self] in
-            guard let self else { return }
-            windowDrag.update()
-            rightDrag.update()
-            guard !model.managementSuspended, !model.terminating, let screen = model.screen else {
-                panels.hide()
+            if action == .showTabs {
+                self.workspaces.revealVisibleTabs()
                 return
             }
-            panels.update(model: model, screen: screen)
+            Task { @MainActor in
+                let focused = await self.discoveryModel.windowManager.focusedManagedID()
+                let target =
+                    self.workspaces.models.first { model in
+                        model.workspaceDesktopAvailable && focused.flatMap { model.tabs.zone(of: $0) } != nil
+                    } ?? self.workspaces.modelAtPointer()
+                guard let target, let id = target.workspaceID else { return }
+                self.workspaces.select(id)
+                target.handleShortcut(action)
+            }
         }
+        registerShortcuts()
         axObserver = NotificationCenter.default.addObserver(forName: .spaceTabsAXChanged, object: nil, queue: .main) {
             [weak self] event in
             guard let pid = event.userInfo?["pid"] as? Int32, let name = event.userInfo?["notification"] as? String
             else { return }
-            Task { @MainActor in self?.model.accessibilityChanged(pid: pid, notification: name) }
+            Task { @MainActor in self?.discoveryModel.accessibilityChanged(pid: pid, notification: name) }
         }
         for name in [
             NSWorkspace.didLaunchApplicationNotification, NSWorkspace.didTerminateApplicationNotification,
@@ -101,7 +169,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                             self.requestWorkspacePresentation(source: "NSWorkspace")
                         }
                     }
-                    self.model.applicationChanged(pid: pid, activated: activated)
+                    self.discoveryModel.applicationChanged(pid: pid, activated: activated)
+                    for model in self.workspaces.models where model !== self.discoveryModel {
+                        if !activated { model.scheduleAssignedLaunchDiscovery(pid: pid) }
+                    }
                 }
             }
             workspaceObservers.append(token)
@@ -112,6 +183,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 Task { @MainActor in
                     guard let self, !self.model.terminating else { return }
                     self.registerShortcuts()
+                    for model in self.workspaces.models { model.physicalDisplaysChanged(applyLinkedProfile: false) }
+                    self.workspaces.updateContexts()
                 }
             }
             workspaceObservers.append(token)
@@ -119,7 +192,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         spaceObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in self?.model.activeSpaceChanged() }
+            Task { @MainActor in
+                self?.workspaces.desktopChanged()
+                self?.desktopMenuBridge.invalidateContext()
+            }
         }
         screenObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
@@ -129,14 +205,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 let topology = self.currentScreenTopology()
                 guard topology != self.screenTopology else { return }
                 self.screenTopology = topology
-                self.model.physicalDisplaysChanged()
+                for model in self.workspaces.models { model.physicalDisplaysChanged(applyLinkedProfile: false) }
+                self.workspaces.updateContexts()
+                self.desktopMenuBridge.invalidateContext()
             }
         }
         environmentTask = Task { [weak self] in
             while !Task.isCancelled {
                 if let self {
                     self.responsiveness.update(self.model.diagnosticContext)
-                    self.model.checkEnvironment()
+                    self.discoveryModel.checkEnvironment()
+                    for model in self.workspaces.models where model !== self.discoveryModel { model.checkEnvironment() }
+                    self.workspaces.updateContexts()
                 }
                 do { try await Task.sleep(for: .seconds(5)) } catch { break }
             }
@@ -146,8 +226,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             model.startDemo()
             showSettings()
         } else {
-            model.startInitialDiscovery()
-            model.applyAutomaticProfileIfReady()
+            discoveryModel.startInitialDiscovery()
             // Existing sessions restore before any unrelated app is inspected.
             // Settings open from the menu and + buttons in their own app.
             if !model.trusted
@@ -157,26 +236,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
         }
         activationPolicy.ready = true
+        desktopMenuBridge.start()
+        desktopMenuReady = true
+        let urls = pendingDesktopURLs
+        pendingDesktopURLs.removeAll()
+        for url in urls { receiveDesktopURL(url) }
     }
 
     private func installStatusMenu() {
-        let menu = NSMenu()
+        let menu = StatusDashboardMenu()
         menu.delegate = self
         menu.autoenablesItems = false
-        let settings = menu.addItem(
+        let dashboard = NSMenuItem()
+        dashboard.tag = 100
+        menu.addItem(dashboard)
+        menu.addItem(.separator())
+        menu.addItem(makeWorkspacesMenu())
+        menu.addItem(makeProfilesMenu())
+        let advancedItem = NSMenuItem(title: L10n.tr("More Actions"), action: nil, keyEquivalent: "")
+        let advanced = NSMenu()
+        advanced.autoenablesItems = false
+        advanced.delegate = self
+        advancedItem.submenu = advanced
+        menu.addItem(advancedItem)
+        let settings = advanced.addItem(
             withTitle: L10n.tr("Windows and Settings…"), action: #selector(showSettings), keyEquivalent: ",")
         settings.target = self
-        let showTabs = menu.addItem(
+        let showTabs = advanced.addItem(
             withTitle: L10n.tr("Show Tabs · ⌃⌥T"), action: #selector(revealTabs), keyEquivalent: "")
         showTabs.target = self
-        menu.addItem(makeProfilesMenu())
-        pauseItem = menu.addItem(
+        let desktopMenu = advanced.addItem(
+            withTitle: L10n.tr("Manage Desktop Menu…"), action: #selector(enableDesktopMenu), keyEquivalent: "")
+        desktopMenu.target = self
+        pauseItem = advanced.addItem(
             withTitle: L10n.tr("Pause and Restore Windows"), action: #selector(togglePause), keyEquivalent: "")
         pauseItem?.target = self
-        let reapply = menu.addItem(
+        let reapply = advanced.addItem(
             withTitle: L10n.tr("Reapply Layout"), action: #selector(reapplyLayout), keyEquivalent: "")
         reapply.target = self
-        releaseItem = menu.addItem(
+        releaseItem = advanced.addItem(
             withTitle: L10n.tr("Release All Windows"), action: #selector(releaseAll), keyEquivalent: "")
         releaseItem?.target = self
         menu.addItem(.separator())
@@ -219,6 +317,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let settings = application.addItem(
             withTitle: L10n.tr("Windows and Settings…"), action: #selector(showSettings), keyEquivalent: ",")
         settings.target = self
+        application.addItem(makeWorkspacesMenu())
         application.addItem(makeProfilesMenu())
         application.addItem(.separator())
         application.addItem(
@@ -261,7 +360,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let present = activationPolicy.reopenRequested()
         model.workspaceActivationEvent = L10n.tr("Dock / reopen; restore=\(present)")
         if present { requestWorkspacePresentation(source: L10n.tr("Dock / reopen")) }
-        // Reopening represents the workspace, never an implicit Settings request.
+        // Restore the workspace first; an already-open Settings window follows.
         return false
     }
 
@@ -270,11 +369,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func registerShortcuts() {
-        model.shortcutWarnings = shortcuts.start(bindings: model.preferences.shortcuts)
-        model.registeredShortcuts = Set(shortcuts.registeredActions.map(\.rawValue))
+        let warnings = shortcuts.start(bindings: model.preferences.shortcuts)
+        let registered = Set(shortcuts.registeredActions.map(\.rawValue))
+        discoveryModel.shortcutWarnings = warnings
+        discoveryModel.registeredShortcuts = registered
+        for model in workspaces.models {
+            model.shortcutWarnings = warnings
+            model.registeredShortcuts = registered
+        }
     }
 
-    @objc private func revealTabs() { panels.reveal() }
+    @objc private func revealTabs() { workspaces.revealVisibleTabs() }
 
     private func makeProfilesMenu() -> NSMenuItem {
         let menu = SavedProfilesMenu(title: L10n.tr("Profiles"))
@@ -290,7 +395,70 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func applySavedProfile(_ sender: NSMenuItem) {
         guard let value = sender.representedObject as? String, let id = UUID(uuidString: value) else { return }
-        model.applyProfile(id)
+        workspaces.openProfile(id, screen: workspaces.modelAtPointer()?.screen ?? model.screen)
+    }
+
+    @objc private func selectWorkspaceSettings(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? UUID else { return }
+        workspaces.select(id)
+        showSettings()
+    }
+
+    private func refreshDesktopMenuCompatibility() {
+        guard desktopMenuCompatibilityTask == nil else { return }
+        desktopMenuCompatibilityTask = Task { [weak self] in
+            let cloudManaged = await Task.detached(priority: .utility) { () -> Bool? in
+                guard let desktop = DesktopMenuStorage.desktop else { return nil }
+                return try? desktop.resourceValues(forKeys: [.isUbiquitousItemKey]).isUbiquitousItem
+            }.value
+            guard let self, !Task.isCancelled else { return }
+            discoveryModel.desktopMenuCloudManaged = cloudManaged
+            for model in workspaces.models { model.desktopMenuCloudManaged = cloudManaged }
+            desktopMenuCompatibilityTask = nil
+        }
+    }
+
+    @objc private func enableDesktopMenu() { FIFinderSyncController.showExtensionManagementInterface() }
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls.prefix(8) where url.absoluteString.utf8.count <= 8192 {
+            if desktopMenuReady {
+                receiveDesktopURL(url)
+            } else if pendingDesktopURLs.count < 8 {
+                pendingDesktopURLs.append(url)
+            }
+        }
+    }
+    private func receiveDesktopURL(_ url: URL) {
+        if url.absoluteString == "\(SpaceTabsIdentity.desktopMenuScheme)://settings" {
+            showSettings()
+            return
+        }
+        _ = desktopMenuBridge.receive(url)
+    }
+    private func performDesktopMenu(_ request: DesktopMenuRequest) {
+        activationTask?.cancel()
+        guard !terminationPending,
+            let screen = NSScreen.screens.first(where: {
+                AppModel.stableDisplayID($0) == request.displayID
+            })
+        else { return }
+        workspaces.updateContexts()
+        switch request.action {
+        case .newWorkspace: workspaces.newWorkspace(on: screen)
+        case .openWorkspace(let id): workspaces.open(id, on: screen)
+        case .openProfile(let id): workspaces.openProfile(id, screen: screen)
+        case .show, .restore, .showTabs:
+            guard let id = workspaces.workspaceHere(on: screen), let runtime = workspaces.runtimes[id],
+                runtime.model.workspaceDesktopAvailable
+            else { return }
+            switch request.action {
+            case .show: workspaces.handle(.showWorkspace(id))
+            case .restore: workspaces.restore(id)
+            case .showTabs: runtime.model.showTabBars()
+            default: break
+            }
+        }
     }
 
     @objc private func quitApp() { NSApp.terminate(nil) }
@@ -312,11 +480,133 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             // Coalesce AppKit, workspace activation and Dock reopen signals.
             do { try await Task.sleep(for: .milliseconds(120)) } catch { return }
             guard let self else { return }
-            model.presentSelectedWindows(source: source)
+            model.presentSelectedWindows(source: source) { [weak self] in self?.settingsHost.presentIfOpen() }
         }
     }
 
+    private func makeWorkspacesMenu() -> NSMenuItem {
+        let item = NSMenuItem(title: L10n.tr("Workspaces"), action: nil, keyEquivalent: "")
+        let menu = WorkspacesMenu(title: item.title)
+        menu.autoenablesItems = false
+        menu.delegate = self
+        item.submenu = menu
+        return item
+    }
+
+    @objc private func workspaceAction(_ sender: NSMenuItem) {
+        guard let action = sender.representedObject as? SettingsCommand else { return }
+        workspaces.handle(action)
+    }
+    @objc private func showWorkspace(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? UUID else { return }
+        workspaces.select(id)
+        guard model.workspaceDesktopAvailable else { return }
+        model.showTabBars()
+        model.presentSelectedWindows(source: L10n.tr("Workspace menu"))
+    }
+    @objc private func restoreWorkspace(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? UUID else { return }
+        workspaces.restore(id)
+    }
+
+    private func updateDashboard(_ menu: NSMenu) {
+        workspaces.updateContexts()
+        let cards = model.workspaceSummaries.compactMap { summary -> WorkspaceMenuCard? in
+            guard let runtime = workspaces.runtimes[summary.id] else { return nil }
+            let model = runtime.model
+            return WorkspaceMenuCard(
+                summary: summary, template: model.layoutTemplate, ratio: model.ratio, rowRatio: model.rowRatio,
+                canRestore: summary.isHere && model.trusted && !model.managementSuspended
+                    && !model.busy && !model.scanning && !model.terminating)
+        }
+        let finish: (@escaping @MainActor @Sendable () -> Void) -> Void = { [weak menu] action in
+            menu?.cancelTracking()
+            // Leave AppKit's tracking stack before showing Settings or changing windows.
+            DispatchQueue.main.async(execute: action)
+        }
+        let dashboard = StatusDashboardView(
+            cards: cards,
+            shortcut: (model.preferences.shortcuts[ShortcutManager.Action.showTabs.rawValue]
+                ?? ShortcutManager.Action.showTabs.defaultBinding).display,
+            settings: { [weak self] in finish { self?.showSettings() } },
+            howTo: { [weak self] in
+                finish {
+                    guard let self else { return }
+                    self.model.howToRequest += 1
+                    self.showSettings()
+                }
+            },
+            showTabs: { [weak self] in finish { self?.revealTabs() } },
+            show: { [weak self] id in finish { self?.workspaces.handle(.showWorkspace(id)) } },
+            restore: { [weak self] id in finish { self?.workspaces.restore(id) } },
+            configure: { [weak self] id in
+                finish {
+                    self?.workspaces.select(id)
+                    self?.showSettings()
+                }
+            })
+        let host = NSHostingView(rootView: dashboard)
+        host.frame = NSRect(origin: .zero, size: host.fittingSize)
+        menu.item(withTag: 100)?.view = host
+    }
+
     func menuNeedsUpdate(_ menu: NSMenu) {
+        if menu is StatusDashboardMenu { updateDashboard(menu) }
+        if menu is WorkspacesMenu {
+            workspaces.updateContexts()
+            menu.removeAllItems()
+            for screen in NSScreen.screens {
+                let item = menu.addItem(
+                    withTitle: L10n.tr("New workspace on \(screen.localizedName)…"),
+                    action: #selector(workspaceAction(_:)), keyEquivalent: "")
+                item.target = self
+                item.representedObject = SettingsCommand.newWorkspace(AppModel.screenID(screen))
+            }
+            menu.addItem(.separator())
+            for summary in model.workspaceSummaries {
+                let state =
+                    summary.isHere
+                    ? L10n.tr("Current desktop") : summary.isOpen ? L10n.tr("Other desktop") : L10n.tr("Closed")
+                let item = NSMenuItem(
+                    title: "\(summary.name) · \(summary.displayName) · \(state)", action: nil, keyEquivalent: "")
+                let actions = NSMenu()
+                actions.autoenablesItems = false
+                item.submenu = actions
+                menu.addItem(item)
+                let settings = actions.addItem(
+                    withTitle: L10n.tr("Windows and Settings…"), action: #selector(selectWorkspaceSettings(_:)),
+                    keyEquivalent: "")
+                settings.target = self
+                settings.representedObject = summary.id
+                for (title, action) in [
+                    (L10n.tr("Show"), #selector(showWorkspace(_:))),
+                    (L10n.tr("Restore"), #selector(restoreWorkspace(_:))),
+                ] {
+                    let entry = actions.addItem(withTitle: title, action: action, keyEquivalent: "")
+                    entry.target = self
+                    entry.representedObject = summary.id
+                    entry.isEnabled = summary.isHere
+                }
+                if !summary.isOpen {
+                    for screen in NSScreen.screens {
+                        let entry = actions.addItem(
+                            withTitle: L10n.tr("Open here on \(screen.localizedName)"),
+                            action: #selector(workspaceAction(_:)), keyEquivalent: "")
+                        entry.target = self
+                        entry.representedObject = SettingsCommand.openWorkspaceHere(
+                            summary.id, AppModel.screenID(screen))
+                    }
+                } else {
+                    let entry = actions.addItem(
+                        withTitle: L10n.tr("Close workspace"), action: #selector(workspaceAction(_:)), keyEquivalent: ""
+                    )
+                    entry.target = self
+                    entry.representedObject = SettingsCommand.closeWorkspace(summary.id)
+                    entry.isEnabled = summary.isHere
+                }
+            }
+            return
+        }
         if menu is SavedProfilesMenu {
             menu.removeAllItems()
             if model.preferences.profiles.isEmpty {
@@ -330,7 +620,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     withTitle: profile.name, action: #selector(applySavedProfile(_:)), keyEquivalent: "")
                 item.target = self
                 item.representedObject = profile.id.uuidString
-                item.isEnabled = model.canApplyProfile
+                item.isEnabled = !model.busy && !model.terminating && !model.configurationBlocked
             }
             return
         }
@@ -355,9 +645,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         terminationPending = true
         windowDrag.stop()
         rightDrag.stop()
-        panels.hide()
+        for model in workspaces.models {
+            model.workspaceDesktopAvailable = false
+            model.layoutChanged()
+        }
         Task {
-            let errors = await model.prepareForTermination()
+            var errors: [String] = []
+            for model in workspaces.models { errors.append(contentsOf: await model.prepareForTermination()) }
             if !errors.isEmpty {
                 let alert = NSAlert()
                 alert.messageText = L10n.tr("SpaceTabs could not finish quitting")
@@ -366,8 +660,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 alert.addButton(withTitle: L10n.tr("Quit Anyway"))
                 NSApp.activate()
                 if alert.runModal() == .alertFirstButtonReturn {
-                    model.terminating = false
-                    model.paused = true
+                    for model in workspaces.models {
+                        model.terminating = false
+                        model.paused = true
+                    }
+                    workspaces.updateContexts()
                     model.message = L10n.tr("Quit cancelled. SpaceTabs is paused. You can resume or release windows.")
                     terminationPending = false
                     windowDrag.start(model: model)
@@ -384,6 +681,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        desktopMenuBridge.stop()
+        desktopMenuCompatibilityTask?.cancel()
         responsiveness.stop()
         DiagnosticLog.shared.record("session.end")
         DiagnosticLog.shared.flush()
@@ -396,10 +695,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         model.zoomRequestTask?.cancel()
         environmentTask?.cancel()
         activationTask?.cancel()
-        panels.stop()
+        workspaces.stop()
         windowDrag.stop()
         rightDrag.stop()
-        model.catalogMonitor.stop()
+        discoveryModel.catalogMonitor.stop()
         shortcuts.stop()
         if let axObserver { NotificationCenter.default.removeObserver(axObserver) }
         if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
@@ -408,10 +707,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func showSettings() {
+        refreshDesktopMenuCompatibility()
         activationTask?.cancel()
         model.noteUserInteraction()
         settingsHost.show()
         model.refreshApplications()
-        if !model.hasCompletedDiscovery { model.startInitialDiscovery() }
+        if !discoveryModel.hasCompletedDiscovery { discoveryModel.startInitialDiscovery() }
     }
 }

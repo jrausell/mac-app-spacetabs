@@ -20,6 +20,14 @@ struct SettingsLayoutPreferences: Codable, Equatable {
 }
 
 enum SettingsCommand: Codable {
+    case openHowTo
+    case selectWorkspace(UUID)
+    case renameWorkspace(UUID, String)
+    case newWorkspace(String)
+    case openWorkspaceHere(UUID, String)
+    case closeWorkspace(UUID)
+    case restoreWorkspace(UUID)
+    case showWorkspace(UUID)
     case bindProfile(UUID, Bool)
     case zoom, openSwitcher
     case reorderTab(UUID, Zone, UUID?)
@@ -30,14 +38,20 @@ enum SettingsCommand: Codable {
     case resetBindings
     case zoneName(Zone, String)
     case saveProfile(String, UUID?)
+    case renameProfile(UUID, String)
     case applyProfile(UUID)
     case profileOpenApps(UUID, Bool)
     case deleteProfile(UUID)
     case login(Bool)
-    case loginSettings, loginStatus
+    case loginSettings, loginStatus, finderExtensionSettings
     case showTabs, refreshApps, refreshWindows, permission, recheck, releaseAll, pause
     case assign(UUID, Zone)
     case release(UUID)
+    case reopenPendingTab(UUID)
+    case synchronizePendingWindow(UUID, UUID)
+    case dismissPendingWindowChoice(UUID)
+    case forgetPendingTab(UUID)
+    case forgetPendingApp(String, Zone)
     case template(LayoutTemplate)
     case layout(SettingsLayoutPreferences)
     case appearance(TabAppearance)
@@ -49,4 +63,9 @@ enum SettingsCommand: Codable {
     case addApps([URL])
     case filter(Zone?)
     case clearMessage, revealApplication
+}
+
+struct SettingsCommandEnvelope: Codable {
+    let workspaceID: UUID
+    let command: SettingsCommand
 }

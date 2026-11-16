@@ -100,7 +100,9 @@ struct DesignSettingsView: View {
                     ForEach(NSScreen.screens, id: \.self) { screen in
                         Text(screen.localizedName).tag(AppModel.screenID(screen))
                     }
-                }.onChange(of: model.selectedScreenID) { model.layoutPreferenceChanged() }
+                }.disabled(model.workspaceID != nil).onChange(of: model.selectedScreenID) {
+                    model.layoutPreferenceChanged()
+                }
                 HStack {
                     Text(L10n.tr("Left \(Int(model.ratio * 100)) %")).monospacedDigit().frame(
                         width: 115, alignment: .leading)

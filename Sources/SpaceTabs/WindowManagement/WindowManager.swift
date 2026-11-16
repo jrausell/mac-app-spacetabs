@@ -127,6 +127,11 @@ actor WindowManager: WindowLayoutAccess, WindowFocusAccess, WindowPresentationAc
     func resetAccessibilityRetries() async {
         for worker in sessions.values { await worker.resetAccessibilityRetries() }
     }
+    func resetAccessibilityRetries(for processes: Set<Int32>) async {
+        for pid in processes {
+            if let worker = sessions[pid] { await worker.resetAccessibilityRetries() }
+        }
+    }
     func discoveryDiagnostics() async -> String {
         var details =
             L10n.tr(
@@ -142,6 +147,9 @@ actor WindowManager: WindowLayoutAccess, WindowFocusAccess, WindowPresentationAc
     private var operations: WindowOperations<WindowManager> { WindowOperations(backend: self) }
     func state(of id: UUID) async throws -> OriginalWindowState { try await operations.snapshot(id) }
     func place(_ id: UUID, frame: CGRect) async throws { try await operations.execute([.place(id, frame)]) }
+    func placeSettling(_ id: UUID, frame: CGRect, isCurrent: @Sendable () async -> Bool) async throws {
+        try await operations.execute([.place(id, frame)], settling: [id], isCurrent: isCurrent)
+    }
     func restore(_ id: UUID, state: OriginalWindowState) async throws { try await operations.restore(id, state: state) }
     func move(_ id: UUID, frame: CGRect, sourceReplacement: UUID?, sourceFrame: CGRect) async throws {
         var commands: [WindowCommand] = [.place(id, frame)]
@@ -149,9 +157,12 @@ actor WindowManager: WindowLayoutAccess, WindowFocusAccess, WindowPresentationAc
         try await operations.execute(commands)
         if let sourceReplacement { try await raise(sourceReplacement, focus: false) }
     }
-    func applyLayout(frames: [UUID: CGRect], selected: [UUID], raiseSelected: Bool = false) async throws {
+    func applyLayout(
+        frames: [UUID: CGRect], selected: [UUID], raiseSelected: Bool = false,
+        settling: Set<UUID> = [], isCurrent: @Sendable () async -> Bool = { true }
+    ) async throws {
         try await WindowLayoutOperations(backend: self).apply(
-            frames: frames, selected: selected, raiseSelected: raiseSelected)
+            frames: frames, selected: selected, raiseSelected: raiseSelected, settling: settling, isCurrent: isCurrent)
     }
     func frame(_ id: UUID) async throws -> CGRect { try await owner(id).frame(id) }
     func minimized(_ id: UUID) async throws -> Bool { try await owner(id).minimized(id) }

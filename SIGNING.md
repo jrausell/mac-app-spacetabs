@@ -6,6 +6,7 @@ SpaceTabs uses stable bundle IDs:
 
 - Main app: `dev.spacetabs.mac`
 - Settings helper: `dev.spacetabs.mac.settings`
+- Finder extension: `dev.spacetabs.mac.finder`
 
 The helper has a separate Dock identity. It does not request Accessibility access or register itself at login; the main app owns those operations.
 
@@ -67,3 +68,6 @@ Automated tests request an ad hoc linker signature for their own transport ident
 Development signing is not a complete public-release process. The source code license is [GNU GPLv3](LICENSE). A public release still needs confirmed asset permissions, a distribution signing/notarization plan, and actual desktop validation. None of these steps is performed automatically by CI.
 
 Background: [Apple TN3127, code-signing requirements](https://developer.apple.com/documentation/technotes/tn3127-inside-code-signing-requirements).
+
+
+The desktop menu is packaged as `Contents/PlugIns/SpaceTabs Desktop Menu.appex` and signed with the configured identity before the main bundle. Its sandbox/read-only entitlement is in `Resources/Finder.entitlements`; only the extension is sandboxed by this change. `codesign --verify --deep --strict dist/SpaceTabs.app` must validate the helper and extension. Signature verification does not enable the extension or prove Finder loads it; enable it through the macOS interface and perform the [desktop menu checks](docs/DESKTOP_MENU.md).

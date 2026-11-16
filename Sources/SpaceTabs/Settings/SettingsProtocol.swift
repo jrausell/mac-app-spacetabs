@@ -4,7 +4,7 @@ import Security
 import SpaceTabsCore
 
 struct SettingsPacket: Codable, Sendable {
-    enum Kind: String, Codable, Sendable { case subscribe, state, command, show, close }
+    enum Kind: String, Codable, Sendable { case subscribe, state, command, show, presentIfOpen, close }
     let kind: Kind
     var data = Data()
 }

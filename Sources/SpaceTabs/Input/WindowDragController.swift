@@ -5,6 +5,7 @@ import SwiftUI
 @MainActor
 final class WindowDragController {
     private weak var model: AppModel?
+    var modelAtPoint: ((CGPoint) -> AppModel?)?
     private var globalMonitor: Any?
     private var localMonitor: Any?
     private var state = ZoneDragState()
@@ -56,6 +57,7 @@ final class WindowDragController {
     }
 
     private func handle(_ event: NSEvent) {
+        if event.type == .leftMouseDown, let modelAtPoint { model = modelAtPoint(NSEvent.mouseLocation) }
         guard available else {
             cancel()
             return

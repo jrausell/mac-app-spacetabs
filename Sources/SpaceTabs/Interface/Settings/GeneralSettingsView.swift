@@ -53,6 +53,28 @@ struct GeneralSettingsView: View {
                     }
                 }
                 SettingsCard(
+                    title: L10n.tr("Desktop context menu"),
+                    subtitle: L10n.tr("Open and restore workspaces from a right-click on the desktop.")
+                ) {
+                    if model.desktopMenuCloudManaged == true {
+                        Label(L10n.tr("Desktop synced with iCloud"), systemImage: "icloud")
+                        Text(
+                            L10n.tr(
+                                "Finder can hide extension menus on an iCloud Desktop. Use SpaceTabs → Workspaces in the menu bar for Open here, Show, and Restore."
+                            )
+                        )
+                        .font(.caption).foregroundStyle(.secondary)
+                    } else {
+                        Text(
+                            L10n.tr(
+                                "Enable SpaceTabs Desktop Menu in macOS Finder extensions, then right-click an empty area of your desktop and choose SpaceTabs. Cloud-managed desktops may hide this experimental menu."
+                            )
+                        )
+                        .font(.caption).foregroundStyle(.secondary)
+                    }
+                    Button(L10n.tr("Manage Desktop Menu…")) { _ = model.sendToManager(.finderExtensionSettings) }
+                }
+                SettingsCard(
                     title: L10n.tr("Drag to assign"),
                     subtitle: L10n.tr("Assign a window by dragging from anywhere in its content.")
                 ) {

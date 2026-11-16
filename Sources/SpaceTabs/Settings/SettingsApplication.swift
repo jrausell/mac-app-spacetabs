@@ -7,15 +7,16 @@ import SwiftUI
         let app = NSApplication.shared
         let delegate = SettingsAppDelegate()
         app.delegate = delegate
-        app.setActivationPolicy(.regular)
+        app.setActivationPolicy(.accessory)
         withExtendedLifetime(delegate) { app.run() }
     }
 }
 
-@MainActor private final class SettingsAppDelegate: NSObject, NSApplicationDelegate {
+@MainActor private final class SettingsAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let model = AppModel()
     private let responsiveness = ResponsivenessMonitor()
     private var window: NSWindow?
+    private lazy var presentation = SettingsWindowPresentation { [weak self] in self?.presentWindow() }
     private var languageObserver: NSObjectProtocol?
     private var localeObserver: NSObjectProtocol?
     private var connectionTask: Task<Void, Never>?
@@ -35,10 +36,8 @@ import SwiftUI
         model.remoteSettings = remote
         model.showTabBars = { [weak model] in model?.remoteSettings?.send(.showTabs) }
         model.restartShortcuts = { [weak model] in model?.remoteSettings?.send(.restartShortcuts) }
-        model.openSettings = { [weak self] in
-            NSApp.activate()
-            self?.showWindow()
-        }
+        model.openSettings = { [weak self] in self?.presentation.show() }
+        remote.presentIfOpen = { [weak self] in self?.presentation.showIfOpen() }
         languageObserver = NotificationCenter.default.addObserver(
             forName: .spaceTabsLanguageDidChange, object: nil, queue: .main
         ) { [weak self] _ in
@@ -60,6 +59,7 @@ import SwiftUI
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1100, height: 760),
             styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+        window.delegate = self
         window.title = L10n.tr("SpaceTabs Settings")
         window.contentMinSize = NSSize(width: 980, height: 620)
         window.collectionBehavior = [.moveToActiveSpace]
@@ -90,14 +90,16 @@ import SwiftUI
     }
     func applicationDidBecomeActive(_ notification: Notification) {
         model.refreshLoginStatus()
-        showWindow()
     }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         showWindow()
         return false
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
-    @objc private func showWindow() {
+    func windowWillClose(_ notification: Notification) { presentation.closed() }
+    @objc private func showWindow() { presentation.show() }
+    private func presentWindow() {
+        NSApp.activate()
         if window?.isMiniaturized == true { window?.deminiaturize(nil) }
         window?.makeKeyAndOrderFront(nil)
     }

@@ -4,7 +4,7 @@ import SpaceTabsCore
 extension AppModel {
     func loadConfiguration() {
         do {
-            if var saved = try persistence.load() {
+            if var saved = try loadWorkspaceLayout.map({ try $0() }) ?? persistence.load() {
                 saved.adapt(to: saved.template)
                 tabAppearance = saved.tabAppearance
                 applicationAssignments = saved.applicationAssignments
@@ -17,6 +17,7 @@ extension AppModel {
                 ratio = saved.ratio
                 selectedScreenID = saved.screenID
                 pendingTabs = saved.tabs
+                savedTabOrder = saved.tabs.map(\.id)
                 appliedRatio = ratio
                 appliedScreenID = selectedScreenID
             }
@@ -30,7 +31,7 @@ extension AppModel {
         }
     }
 
-    private func manifest(tabs: TabManager, originals: [UUID: OriginalWindowState], excludingPending: Set<UUID> = [])
+    func sessionManifest(tabs: TabManager, originals: [UUID: OriginalWindowState], excludingPending: Set<UUID> = [])
         -> PersistedLayout
     {
         let live = Zone.allCases.flatMap { zone in
@@ -43,27 +44,64 @@ extension AppModel {
                     windowNumber: snapshot.windowNumber)
             }
         }
-        // A pending selected tab must not compete with a live selection in the same zone.
         let pending = pendingTabs.filter { saved in
             !excludingPending.contains(saved.id) && !live.contains { $0.id == saved.id }
-        }.map { saved in
-            SavedTab(
-                id: saved.id, identity: saved.identity, zone: saved.zone,
-                selected: saved.selected && !live.contains(where: { $0.zone == saved.zone && $0.selected }),
-                original: saved.original, processID: saved.processID, launchDate: saved.launchDate,
-                windowNumber: saved.windowNumber)
         }
+        // A recovered window can have a new runtime UUID. Keep its saved slot
+        // position when the caller retires the corresponding pending record.
+        var matches = WindowReconciler.matches(
+            saved: pendingTabs.filter { excludingPending.contains($0.id) }, windows: windows,
+            launchDates: runningLaunchDates)
+        for (slot, window) in explicitPendingMatches() where excludingPending.contains(slot) && matches[slot] == nil {
+            if !matches.values.contains(window) { matches[slot] = window }
+        }
+        let order = savedTabOrder.map { matches[$0] ?? $0 }
+        let savedTabs = SavedTabManifest.merge(live: live, pending: pending, order: order)
         return PersistedLayout(
-            ratio: ratio, screenID: selectedScreenID, tabs: live + pending, autoHideTabBars: autoHideTabBars,
+            ratio: ratio, screenID: selectedScreenID, tabs: savedTabs, autoHideTabBars: autoHideTabBars,
             revealTabsAtTopEdge: revealTabsAtTopEdge, applicationAssignments: applicationAssignments,
             tabAppearance: tabAppearance, template: layoutTemplate, rowRatio: rowRatio)
+    }
+
+    func persistLayout(_ layout: PersistedLayout, claims: Set<UUID> = []) throws {
+        if let saveWorkspaceLayout { try saveWorkspaceLayout(layout, claims) } else { try persistence.save(layout) }
+    }
+
+    func eligibleWindow(_ window: WindowSnapshot) -> Bool {
+        windowIsEligible?(window) ?? true
+    }
+
+    func eligibleAutomaticWindow(_ window: WindowSnapshot) -> Bool {
+        guard eligibleWindow(window) else { return false }
+        guard workspaceID != nil, tabs.zone(of: window.id) == nil else { return true }
+        guard let screen, let primary = NSScreen.screens.first else { return false }
+        let frame = LayoutEngine.appKitFrame(from: window.state.frame, primaryDisplayTop: primary.frame.maxY)
+        return screen.frame.contains(CGPoint(x: frame.midX, y: frame.midY))
     }
 
     func checkpoint(tabs: TabManager, originals: [UUID: OriginalWindowState], excludingPending: Set<UUID> = []) throws {
         guard !configurationBlocked else {
             throw ConfigurationError(L10n.tr("Reset the damaged configuration before managing new windows."))
         }
-        try persistence.save(manifest(tabs: tabs, originals: originals, excludingPending: excludingPending))
+        let saved = sessionManifest(tabs: tabs, originals: originals, excludingPending: excludingPending)
+        try persistLayout(saved, claims: Set(originals.keys))
+        savedTabOrder = saved.tabs.map(\.id)
+    }
+
+    func retainUnavailableAssignments(_ removed: Set<UUID>) {
+        guard !demo, !removed.isEmpty else { return }
+        // Capture before discovery drops the snapshots and live tab membership.
+        let saved = sessionManifest(tabs: tabs, originals: originals)
+        let existing = Set(pendingTabs.map(\.id))
+        pendingTabs.append(contentsOf: saved.tabs.filter { removed.contains($0.id) && !existing.contains($0.id) })
+        savedTabOrder = saved.tabs.map(\.id)
+    }
+
+    func profileLayout() -> PersistedLayout {
+        var layout = sessionManifest(tabs: tabs, originals: originals)
+        layout.screenID = screen.map { Self.stableDisplayID($0) } ?? selectedScreenID
+        layout.tabs = SavedTabManifest.profileTabs(layout.tabs)
+        return layout
     }
 
     func saveLayout() {
@@ -85,13 +123,14 @@ extension AppModel {
                     "layout.backup-\(UUID()).json")
                 try FileManager.default.copyItem(at: persistence.url, to: backup)
             }
-            try persistence.save(
+            try persistLayout(
                 PersistedLayout(
                     ratio: ratio, screenID: selectedScreenID, autoHideTabBars: autoHideTabBars,
                     revealTabsAtTopEdge: revealTabsAtTopEdge, applicationAssignments: applicationAssignments,
                     tabAppearance: tabAppearance, template: layoutTemplate, rowRatio: rowRatio))
             configurationBlocked = false
             pendingTabs = []
+            savedTabOrder = []
             message = L10n.tr("Configuration reset. A copy of the previous file was kept, if one existed.")
         } catch {
             if !(error is CancellationError) { DiagnosticLog.shared.failure(error, operation: #function) }
@@ -107,9 +146,14 @@ extension AppModel {
     }
 
     var pendingSessionMatches: [UUID: UUID] {
-        WindowReconciler.matches(
+        var matches = WindowReconciler.matches(
             saved: pendingTabs,
-            windows: windows.filter { tabs.zone(of: $0.id) == nil && $0.compatible }, launchDates: runningLaunchDates)
+            windows: windows.filter { tabs.zone(of: $0.id) == nil && $0.compatible && eligibleWindow($0) },
+            launchDates: runningLaunchDates)
+        for (slot, window) in explicitPendingMatches() where matches[slot] == nil {
+            if !matches.values.contains(window) { matches[slot] = window }
+        }
+        return matches
     }
 
     var restorableCount: Int { pendingSessionMatches.count }
@@ -121,6 +165,7 @@ extension AppModel {
 
     func forgetPending() {
         if sendToManager(.forget) { return }
+        cancelPendingReopens()
         pendingTabs = []
         saveLayout()
     }
@@ -141,8 +186,8 @@ extension AppModel {
             automatically
             ? sessionRestoration.takeMatches(
                 saved: pendingTabs,
-                windows: windows.filter { tabs.zone(of: $0.id) == nil && $0.compatible },
-                launchDates: runningLaunchDates)
+                windows: windows.filter { tabs.zone(of: $0.id) == nil && $0.compatible && eligibleWindow($0) },
+                launchDates: runningLaunchDates, explicitMatches: explicitPendingMatches())
             : pendingSessionMatches
         guard !matches.isEmpty else {
             if automatically { return }
@@ -153,6 +198,9 @@ extension AppModel {
             return
         }
         let revision = presentationRevision
+        let desktop = desktopRevision
+        let placementInput = PlacementInputSnapshot.capture()
+        let explicit = Set(matches.keys.filter { pendingReopens[$0] != nil })
         perform {
             self.restoringTabZones = Set(self.pendingTabs.filter { matches[$0.id] != nil }.map(\.zone))
             defer { self.restoringTabZones.removeAll() }
@@ -166,7 +214,7 @@ extension AppModel {
                 // Reuse the recovery frame only for a uniquely matched document
                 // in the exact same running application instance.
                 let sameProcess =
-                    saved.processID == live.pid && saved.launchDate != nil
+                    !explicit.contains(saved.id) && saved.processID == live.pid && saved.launchDate != nil
                     && saved.launchDate == NSRunningApplication(processIdentifier: live.pid)?.launchDate
                 let documentKnown = !(saved.identity.document ?? "").isEmpty
                 originalStates[id] = sameProcess && documentKnown ? (saved.original ?? live.state) : live.state
@@ -175,6 +223,13 @@ extension AppModel {
             where saved.selected && (!automatically || self.explicitSelectionRevision[saved.zone, default: 0] == 0) {
                 if let id = matches[saved.id] { next.select(id, in: saved.zone) }
             }
+            next.restoreOrder(self.savedTabOrder.map { matches[$0] ?? $0 })
+            if !explicit.isEmpty {
+                guard self.desktopRevision == desktop, !self.managementSuspended,
+                    explicit.allSatisfy({ self.pendingReopens[$0] != nil })
+                else { throw CancellationError() }
+            }
+            let previousOrder = self.savedTabOrder
             try self.checkpoint(tabs: next, originals: originalStates, excludingPending: Set(matches.keys))
             var frames: [UUID: CGRect] = [:]
             for saved in self.pendingTabs {
@@ -182,7 +237,27 @@ extension AppModel {
             }
             do {
                 let selected = self.activeZones.compactMap { next.selected[$0] }
-                try await self.windowManager.applyLayout(frames: frames, selected: selected)
+                let settling = Set(
+                    matches.compactMap { slot, window in
+                        self.needsPlacementSettlement(window, recovering: explicit.contains(slot)) ? window : nil
+                    })
+                let settlingTargets = self.pendingTabs.compactMap { saved -> (Zone, CGRect)? in
+                    guard let id = matches[saved.id], settling.contains(id), let frame = frames[id] else {
+                        return nil
+                    }
+                    return (saved.zone, frame)
+                }
+                try await self.windowManager.applyLayout(frames: frames, selected: selected, settling: settling) {
+                    [weak self] in
+                    await MainActor.run {
+                        guard let self else { return false }
+                        return settlingTargets.allSatisfy { zone, frame in
+                            self.placementIsCurrent(
+                                zone: zone, target: frame, desktop: desktop, interaction: revision,
+                                input: placementInput)
+                        }
+                    }
+                }
                 if !automatically || revision == 0 { try await self.raiseSelections(selected, revision: revision) }
             } catch {
                 if !(error is CancellationError) { DiagnosticLog.shared.failure(error, operation: #function) }
@@ -190,6 +265,8 @@ extension AppModel {
                     self.tabs = next
                     self.originals = originalStates
                     self.pendingTabs.removeAll { matches[$0.id] != nil }
+                } else {
+                    self.savedTabOrder = previousOrder
                 }
                 throw error
             }

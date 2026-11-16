@@ -5,6 +5,10 @@ import UniformTypeIdentifiers
 extension AppModel {
     func refreshApplications() {
         if sendToManager(.refreshApps) { return }
+        if let discoveryOwner {
+            discoveryOwner.refreshApplications()
+            return
+        }
         guard !terminating else { return }
         guard !catalogUpdating else {
             catalogRefreshPending = true
@@ -31,6 +35,7 @@ extension AppModel {
         // Repeated filesystem events with the same result do not publish a list.
         if installedApplications != snapshot.applications { installedApplications = snapshot.applications }
         catalogMonitor.update(snapshot.directories)
+        catalogPublished?(snapshot.applications)
         catalogMessage = nil
     }
 
@@ -180,8 +185,9 @@ extension AppModel {
 
     func pendingApplicationAssignments(in zone: Zone) -> [ApplicationAssignment] {
         guard !demo else { return [] }
+        let represented = Set(visiblePendingTabs(in: zone).map { $0.identity.bundleID })
         return applicationAssignments.filter { rule in
-            rule.zone == zone
+            rule.zone == zone && !represented.contains(rule.bundleID)
                 && !windows.contains { window in
                     tabs.zone(of: window.id) == rule.zone && assignment(for: window)?.id == rule.id
                 }
@@ -233,7 +239,7 @@ extension AppModel {
                 tabs.windows[zone, default: []].map { ($0, zone) }
             })
         let eligible = ApplicationAssignmentResolver.candidates(
-            windows: windows, applicationURLs: applicationURLs,
+            windows: windows.filter(eligibleAutomaticWindow), applicationURLs: applicationURLs,
             assignments: applicationAssignments, assignedZones: assignedZones, attempts: applicationAssignmentAttempts)
         // Saved per-window zones take priority over a broad application rule.
         let reservedForSession = Set(pendingSessionMatches.values)

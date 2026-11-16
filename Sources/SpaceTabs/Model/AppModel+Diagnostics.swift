@@ -4,8 +4,11 @@ import SpaceTabsCore
 extension AppModel {
     var diagnosticContext: [String: String] {
         [
+            "workspace": workspaceID?.uuidString ?? "legacy",
+            "workspaceHere": String(workspaceDesktopAvailable),
             "busy": String(busy), "scanning": String(scanning), "switchingTabs": String(switchingTabs),
             "paused": String(paused), "desktopTransition": String(spaceTransitioning),
+            "displayUnavailable": String(displayUnavailable),
             "managedWindows": String(originals.count), "pendingTabs": String(pendingTabs.count),
             "template": layoutTemplate.rawValue, "lastTabClick": lastTabClick,
         ]

@@ -10,6 +10,7 @@ final class AppModel {
     @ObservationIgnored var remoteSettings: RemoteSettingsModel?
     var remoteSettingsConnected = false
     var settingsShowsApplications = true
+    var howToRequest = 0
     var preferences = UserPreferences() {
         didSet {
             if oldValue.language != preferences.language { L10n.configure(preferences.language) }
@@ -45,16 +46,27 @@ final class AppModel {
     var launchingApplications = Set<String>()
     @ObservationIgnored var catalogUpdating = false
     @ObservationIgnored var catalogRefreshPending = false
-    @ObservationIgnored let applicationCatalog = ApplicationCatalog(
-        roots: [
-            URL(fileURLWithPath: "/Applications"), URL(fileURLWithPath: "/System/Applications"),
-            FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Applications"),
-        ],
-        configurationURL: PersistenceStore.standard.url.deletingLastPathComponent().appendingPathComponent(
-            "applications.json"))
+    @ObservationIgnored let applicationCatalog: ApplicationCatalog
     @ObservationIgnored let catalogMonitor = ApplicationDirectoryMonitor()
     // MARK: - Layout and desktop state
 
+    var workspaceID: UUID?
+    var workspaceName = ""
+    var desktopMenuCloudManaged: Bool?
+    var workspaceDesktopAvailable = true
+    var workspaceSummaries: [WorkspaceSummary] = []
+    @ObservationIgnored var loadWorkspaceLayout: (() throws -> PersistedLayout?)?
+    @ObservationIgnored var saveWorkspaceLayout: ((PersistedLayout, Set<UUID>) throws -> Void)?
+    @ObservationIgnored var preferencesCommitted: ((UserPreferences) -> Void)?
+    @ObservationIgnored var profileOpening: ((UUID) -> Void)?
+    @ObservationIgnored var profileSaved: ((UUID) -> Void)?
+    @ObservationIgnored var workspaceCommand: ((SettingsCommand) -> Void)?
+    @ObservationIgnored var windowIsEligible: ((WindowSnapshot) -> Bool)?
+    @ObservationIgnored weak var discoveryOwner: AppModel?
+    @ObservationIgnored var discoveryBundles: (() -> Set<String>)?
+    @ObservationIgnored var discoveryPublished: ((ScanResult, Bool) -> Void)?
+    @ObservationIgnored var focusPublished: ((UUID?) -> Void)?
+    @ObservationIgnored var catalogPublished: (([InstalledApplication]) -> Void)?
     var showTabBars: () -> Void = {}
     var tabAppearance = TabAppearance()
     @ObservationIgnored var appearanceSaveTask: Task<Void, Never>?
@@ -71,11 +83,15 @@ final class AppModel {
     var tabs = TabManager()
     var demo = false
     var paused = false
+    var displayUnavailable = false
+    @ObservationIgnored var displaySelection = DisplaySelectionTracker()
     var spaceTransitioning = false
     var spaceChangeCount = 0
     var lastSpaceChange = L10n.tr("No desktop changes")
     @ObservationIgnored var spaceChangeTask: Task<Void, Never>?
-    var managementSuspended: Bool { paused || spaceTransitioning || displayProfileTask != nil }
+    var managementSuspended: Bool {
+        paused || !workspaceDesktopAvailable || displayUnavailable || spaceTransitioning || displayProfileTask != nil
+    }
     var message: String? {
         didSet {
             if let message, message != oldValue {
@@ -102,6 +118,7 @@ final class AppModel {
     @ObservationIgnored var zoomRequestTask: Task<Void, Never>?
     var pendingAutomaticProfile: UUID?
     @ObservationIgnored var displayProfileTask: Task<Void, Never>?
+    @ObservationIgnored var displayTransitionUsesProfile = false
     var workspaceActivationEvent = L10n.tr("No activations")
     var workspacePresentationRequests = 0
     var workspacePresentationStatus = L10n.tr("No requests")
@@ -141,6 +158,13 @@ final class AppModel {
     var activeZone: Zone = .a
     var originals: [UUID: OriginalWindowState] = [:]
     var pendingTabs: [SavedTab] = []
+    var savedTabOrder: [UUID] = []
+    var reopeningPendingTabs = Set<UUID>()
+    var pendingWindowChoices: [UUID: [UUID]] = [:]
+    var pendingWindowMessages: [UUID: String] = [:]
+    @ObservationIgnored var pendingReopens: [UUID: PendingWindowReopen] = [:]
+    @ObservationIgnored var pendingReopenTasks: [UUID: Task<Void, Never>] = [:]
+    @ObservationIgnored var pendingReopenTokens: [UUID: UUID] = [:]
     var restoringTabZones = Set<Zone>()
     @ObservationIgnored var sessionRestoration = SessionRestorationQueue()
     var configurationBlocked = false
@@ -151,8 +175,8 @@ final class AppModel {
     var desktopRevision = 0
     // MARK: - Runtime services and task ownership
 
-    @ObservationIgnored let windowManager = WindowManager()
-    @ObservationIgnored let persistence = PersistenceStore.standard
+    @ObservationIgnored let windowManager: WindowManager
+    @ObservationIgnored let persistence: PersistenceStore
     @ObservationIgnored var operationTask: Task<Void, Never>?
     @ObservationIgnored var reflowTask: Task<Void, Never>?
     @ObservationIgnored var scanTask: Task<Void, Never>?
@@ -168,7 +192,21 @@ final class AppModel {
     @ObservationIgnored var presentationRevision = 0
     @ObservationIgnored var explicitSelectionRevision: [Zone: Int] = [:]
 
-    init(preferencesStore: UserPreferencesStore = .standard) {
+    init(
+        preferencesStore: UserPreferencesStore = .standard, persistence: PersistenceStore = .standard,
+        windowManager: WindowManager = WindowManager(), applicationCatalog: ApplicationCatalog? = nil
+    ) {
+        self.applicationCatalog =
+            applicationCatalog
+            ?? ApplicationCatalog(
+                roots: [
+                    URL(fileURLWithPath: "/Applications"), URL(fileURLWithPath: "/System/Applications"),
+                    FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Applications"),
+                ],
+                configurationURL: PersistenceStore.standard.url.deletingLastPathComponent().appendingPathComponent(
+                    "applications.json"))
+        self.windowManager = windowManager
         self.preferencesStore = preferencesStore
+        self.persistence = persistence
     }
 }

@@ -1,52 +1,47 @@
-# Profiles and monitors
+# Workspaces, profiles, and monitors
 
-SpaceTabs currently manages zones on **one selected display at a time**. You can save different profiles for different screens or display setups, but you cannot run an independent active profile on each monitor simultaneously.
+The current source has an experimental workspace coordinator. Each open workspace has its own tabs, pending assignments, layout, names, appearance, pause state, and controls. It shares the Accessibility service and app catalog with the other workspaces. Native desktop and multiple-monitor interaction still require the acceptance checks in [Testing](TESTING.md).
 
-## Save and switch between setups
+## Create a workspace on another monitor or desktop
 
-1. In **Design**, choose the display, template, sizes, and appearance for your first setup.
-2. In **Apps**, assign apps to zones. **All Apps** creates app rules, including for closed apps. **Open Windows** lets you assign a specific window, useful when other browser windows should stay on another display.
-3. Open **Profiles**, enter a name such as `Work`, and select **Save Profile**.
-4. If desired, enable **Open closed assigned apps when switching manually** on that profile. This requires saved app rules; window-only snapshots do not launch apps.
-5. Change your layout and assignments, then save another named profile, such as `Personal`.
-6. Choose a saved name from **SpaceTabs → Profiles** in the status menu or application menu. You can also select **Apply** in Settings → Profiles, or find the profile through Search.
+1. Switch to the macOS desktop where you want to work.
+2. Choose **SpaceTabs → Workspaces → New workspace on [display]…**. Choose the second monitor to create independent zones there. The same actions are available above the Settings pages.
+3. Assign windows in Apps and choose a layout in Design. The Settings workspace picker selects whose assignments you are editing.
+4. Save a named profile if desired. The workspace's accepted assignments and layout changes are checkpointed automatically, including unavailable app/window slots.
 
-Manual switching can open closed assigned apps when its checkbox is enabled. Apps open in the background and their compatible windows join their assigned zones as they appear. It does not recreate specific documents or browser pages, close other apps, or create a separate macOS desktop. Unlisted windows retain their current zone. Saving or updating a profile does not itself open apps.
+There is one open workspace per monitor on each visible native desktop. Creating or opening another workspace at an occupied destination closes and saves the previous workspace first, releasing its windows without quitting their apps. The old workspace remains in the Workspaces menu. Other monitors and other desktops keep their own workspaces.
 
-## Put your zones on a second monitor
+A new workspace starts empty. Saving two legacy profiles of the same windows does not invent two independent copies of those windows. A real native window can belong to only one open workspace. Assign separate windows when using the same app in several workspaces. Broad app rules claim eligible unowned windows on their own monitor; individual assignments give more control with browsers.
 
-1. Connect the monitor and open **SpaceTabs Settings → Design → Templates and Sizes**.
-2. Select the external screen in **Display**, choose a template, and adjust the proportions.
-3. Assign apps and windows to the zones.
-4. Open **Profiles**, enter a name such as `External display`, and select **Save Profile**.
-5. Open that profile's `…` menu and choose **Use automatically with these displays**.
+## Profiles and saved workspace state
 
-A profile stores the selected display, layout, proportions, appearance, zone names, tab selections, and app assignments. Saving a profile does not create a second active workspace alongside the first.
+Profiles are reusable named snapshots. **Open profile here** creates or opens that profile's own workspace, with its own saved slots, rather than merging all the current tabs into another layout. Once a workspace exists for a profile, subsequent opens use its latest checkpointed state. Saving a new profile associates that workspace with the new name; the previous profile remains a snapshot.
 
-## Prepare a layout for working without it
+Closing an external app/window preserves its slot. Use its Pending card to synchronize an existing window or reopen its app. Ambiguous choices, such as two unassigned Chrome windows, require selecting the intended window. Explicit removal forgets the saved assignment. Browser pages and unsaved documents are not recreated.
 
-1. Disconnect the external display, or turn it off if macOS then removes it from the display setup.
-2. If SpaceTabs pauses, select your remaining display in Design and choose **Resume**.
-3. Adjust the layout and assignments for that screen.
-4. Save another profile, such as `Single display`.
-5. Choose **Use automatically with these displays** for that profile while only the remaining screen is connected.
+## Show, Restore, and Close
 
-There is one automatic profile link per display setup. Linking a different profile while the same setup is connected replaces its previous link. Applying a profile manually does not change its saved automatic link.
+The Workspaces menu lists the display and whether each workspace is on the current desktop, another desktop, or closed.
 
-## What happens when a screen disappears?
+- **Show** raises the selected tab in each zone, ending in B, without resizing windows.
+- **Restore** reapplies the workspace's geometry and retries its pending apps. A pending app with several candidate windows presents a choice. App startup is bounded; failures remain available on Pending cards.
+- **Close workspace** saves its slots and releases its windows. It leaves the external apps running.
+- **Open here on [display]** binds a closed workspace to the selected monitor on the current native desktop. Explicit opening also attempts pending app recovery. The legacy profile checkbox still controls launching broad app assignments that have no saved window slot.
 
-SpaceTabs waits briefly for a display change to settle. If the new display setup has a linked profile and management is active with Accessibility access, it applies that profile once pending work finishes. The display-change debounce is about 0.9 seconds; this is not a guarantee that window placement finishes within that time.
+Show and Restore are available only on the workspace's current desktop. Opening a profile already open elsewhere selects its existing workspace; switch to that desktop to use it. SpaceTabs does not silently move another desktop's windows here.
 
-If there is no linked profile, SpaceTabs pauses and asks you to check the selected screen and resume. macOS may move windows from a disconnected display onto another screen; SpaceTabs does not control that system behavior. Saved profiles remain on disk.
+## Restarting SpaceTabs
 
-Turning a monitor off is not always a disconnect. Some monitors, docks, and adapters continue reporting the screen to macOS. If macOS still sees the same display setup, SpaceTabs does not switch profiles just because the panel went dark.
+The first migration copies the legacy session into a Main workspace without deleting `layout.json` or named profiles. The authoritative workspace state is then `workspaces.json`.
 
-## What happens when it comes back?
+After a later SpaceTabs restart, saved workspaces start closed and unconfirmed. Switch to each intended native desktop and choose **Workspaces → [name] → Open here on [display]**. macOS exposes no public stable desktop ID that SpaceTabs can persist between runs. During one app session, retained ordered-out anchor windows track desktop membership using public AppKit APIs, following the [desktop probe](DESKTOP_PROBE.md).
 
-When macOS reports the same display setup again, the linked profile can apply automatically. This also applies at startup. The saved windows must still be open and uniquely identifiable. Closed apps are not launched; app assignment rules can take effect when you open them later.
+Tab bars use managed native windows and stay with their workspace's desktop. They do not follow the active desktop. There is no private Space enumeration, native-desktop creation, or automated Mission Control movement.
 
-A paused app stays paused. If the earlier disconnect had no linked profile and left SpaceTabs paused, reconnecting a monitor will not automatically clear that pause. Resume management on the intended screen; you can then apply the saved profile manually.
+## Display changes and wake
 
-The display-setup key includes screen identity, resolution, and arrangement. Changing scaling, screen positions, or connected screens may require linking a profile to that new setup. Each profile remembers one destination display; if it is unavailable when a profile is applied, placement falls back to the main display.
+A missing display temporarily suspends its workspace without clearing a manual pause or redirecting it onto another monitor. Display identity uses the physical display UUID; changing runtime display numbers does not select an unrelated screen. Wake renews shortcuts; display and desktop transitions debounce before controls resume. Neither event launches closed apps or automatically raises their windows.
 
-For reliable switching, save and link a profile for both the connected and disconnected setups, and keep management active. See [Testing](TESTING.md) for the desktop checks and [Configuration](CONFIGURATION.md) for stored data.
+macOS may relocate windows when a monitor disconnects. Reconnect, sleep, full-screen transitions, and changes to “Displays have separate Spaces” need real desktop validation. Legacy display-setup profile links remain stored but do not automatically replace workspace instances. Use explicit workspace opening while this behavior is validated. The display picker is fixed for a workspace; create or open it on the intended monitor instead.
+
+Workspace storage is bounded to 16 records. The remaining product work, including portrait templates, is tracked in the [workspace plan](WORKSPACE_PROFILES_PLAN.md).

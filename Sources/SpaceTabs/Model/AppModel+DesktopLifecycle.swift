@@ -5,6 +5,7 @@ extension AppModel {
     func activeSpaceChanged() {
         guard !terminating else { return }
         desktopRevision += 1
+        cancelPendingReopens()
         spaceChangeCount += 1
         lastSpaceChange =
             L10n.tr("\(Date.now.formatted(date: .omitted, time: .standard)) · waiting for the transition to finish")
@@ -34,6 +35,7 @@ extension AppModel {
     }
 
     func suspendForDesktopChange(_ reason: String) {
+        cancelPendingReopens()
         profileLaunchTask?.cancel()
         displayProfileTask?.cancel()
         displayProfileTask = nil
@@ -51,6 +53,7 @@ extension AppModel {
 
     func togglePause() {
         if sendToManager(.pause) { return }
+        cancelPendingReopens()
         if demo || originals.isEmpty {
             paused.toggle()
             layoutChanged()
@@ -93,6 +96,7 @@ extension AppModel {
 
     func prepareForTermination() async -> [String] {
         terminating = true
+        cancelPendingReopens()
         profileLaunchTask?.cancel()
         tabSelectionRunner.cancel()
         await tabSelectionRunner.wait()

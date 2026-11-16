@@ -8,11 +8,16 @@
     <key>CFBundleIconFile</key><string>SpaceTabs.icns</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>0.9.0</string>
-    <key>CFBundleVersion</key><string>35</string>
+    <key>CFBundleVersion</key><string>41</string>
     <key>CFBundleDevelopmentRegion</key><string>en</string>
     <key>CFBundleLocalizations</key><array><string>en</string><string>es</string></array>
     <key>LSMinimumSystemVersion</key><string>15.0</string>
     <key>LSUIElement</key><false/>
     <key>NSHighResolutionCapable</key><true/>
     <key>NSMainClass</key><string>NSApplication</string>
+    <key>CFBundleURLTypes</key><array><dict>
+        <key>CFBundleURLName</key><string>dev.spacetabs.mac.desktop-menu</string>
+        <key>CFBundleURLSchemes</key><array><string>spacetabs</string></array>
+        <key>CFBundleTypeRole</key><string>Editor</string>
+    </dict></array>
 </dict></plist>

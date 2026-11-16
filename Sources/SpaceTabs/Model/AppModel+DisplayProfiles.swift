@@ -14,7 +14,7 @@ extension AppModel {
         }.sorted().joined(separator: "|")
     }
     var linkedProfile: WorkspaceProfile? {
-        guard let id = preferences.displayProfiles[displayConfigurationKey] else { return nil }
+        guard workspaceID == nil, let id = preferences.displayProfiles[displayConfigurationKey] else { return nil }
         return preferences.profiles.first { $0.id == id }
     }
     func bindProfile(_ id: UUID, enabled: Bool) {
@@ -33,23 +33,72 @@ extension AppModel {
                 : L10n.tr("Automatic profile link removed.")
         }
     }
-    func physicalDisplaysChanged() {
-        displayProfileTask?.cancel()
-        guard linkedProfile != nil, trusted, !paused, !demo, !terminating else {
-            suspendForDesktopChange(L10n.tr("The display setup changed. Check the selected display and select Resume."))
-            return
+    func updateDisplayAvailability(displays supplied: [DisplayIdentity]? = nil) {
+        let displays =
+            supplied
+            ?? NSScreen.screens.map {
+                DisplayIdentity(runtimeID: Self.screenID($0), stableID: Self.stableDisplayID($0))
+            }
+        let wasUnavailable = displayUnavailable
+        if let id = displaySelection.resolve(selectedScreenID, displays: displays) {
+            if appliedScreenID == selectedScreenID { appliedScreenID = id }
+            selectedScreenID = id
+            displayUnavailable = false
+        } else {
+            displayUnavailable = true
         }
+        guard wasUnavailable != displayUnavailable else { return }
+        DiagnosticLog.shared.record(
+            "desktop.displayAvailability",
+            details: ["available": String(!displayUnavailable), "paused": String(paused)])
+        if displayUnavailable {
+            noteUserInteraction()
+            cancelPendingReopens()
+            reflowTask?.cancel()
+            message = L10n.tr(
+                "The selected display is unavailable. Waiting for it to reconnect, or choose another display.")
+        } else {
+            if message
+                == L10n.tr(
+                    "The selected display is unavailable. Waiting for it to reconnect, or choose another display.")
+            {
+                message = nil
+            }
+            restartShortcuts()
+        }
+        layoutChanged()
+    }
+
+    func physicalDisplaysChanged(applyLinkedProfile: Bool = true, displays: [DisplayIdentity]? = nil) {
+        guard !demo, !terminating else { return }
+        let useProfile = applyLinkedProfile || (displayProfileTask != nil && displayTransitionUsesProfile)
+        displayTransitionUsesProfile = useProfile
+        pendingAutomaticProfile = nil
+        cancelPendingReopens()
+        displayProfileTask?.cancel()
+        // The display debounce now owns the transition. A cancelled Space task
+        // must not retain its handle and keep the manager suspended forever.
+        spaceChangeTask?.cancel()
+        spaceChangeTask = nil
         noteUserInteraction()
         reflowTask?.cancel()
         desktopRevision += 1
         spaceTransitioning = true
+        DiagnosticLog.shared.record(
+            "desktop.displayTransitionStarted",
+            details: ["source": applyLinkedProfile ? "display" : "wake/session", "paused": String(paused)])
         layoutChanged()
         displayProfileTask = Task { [weak self] in
             do { try await Task.sleep(for: .milliseconds(900)) } catch { return }
-            guard let self, !terminating else { return }
+            guard let self, !Task.isCancelled, !terminating else { return }
             displayProfileTask = nil
             spaceTransitioning = spaceChangeTask != nil
-            pendingAutomaticProfile = linkedProfile?.id
+            displayTransitionUsesProfile = false
+            updateDisplayAvailability(displays: displays)
+            if displays == nil { checkEnvironment() }
+            DiagnosticLog.shared.record("desktop.displayTransitionFinished", details: diagnosticContext)
+            if useProfile, !paused, trusted { pendingAutomaticProfile = linkedProfile?.id }
+            restartShortcuts()
             layoutChanged()
             applyAutomaticProfileIfReady()
         }

@@ -9,6 +9,11 @@ let package = Package(
     targets: [
         .target(name: "SpaceTabsCore", resources: [.process("Localization/Resources")]),
         .executableTarget(name: "SpaceTabs", dependencies: ["SpaceTabsCore"]),
+        .executableTarget(
+            name: "SpaceTabsFinder", dependencies: ["SpaceTabsCore"],
+            swiftSettings: [.unsafeFlags(["-application-extension"])],
+            linkerSettings: [.unsafeFlags(["-Xlinker", "-e", "-Xlinker", "_NSExtensionMain"])]),
+        .executableTarget(name: "DesktopProbe", dependencies: ["SpaceTabsCore"], path: "Tools/DesktopProbe"),
         .testTarget(name: "SpaceTabsCoreTests", dependencies: ["SpaceTabsCore"]),
         .testTarget(name: "SpaceTabsTests", dependencies: ["SpaceTabs"]),
     ]

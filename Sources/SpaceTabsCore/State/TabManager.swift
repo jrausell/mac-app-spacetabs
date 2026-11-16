@@ -48,6 +48,19 @@ public struct TabManager: Codable, Equatable, Sendable {
         windows[zone] = list
     }
 
+    /// Recovered tabs return to their saved slots; unlisted tabs retain order.
+    public mutating func restoreOrder(_ order: [UUID]) {
+        var seen = Set<UUID>()
+        let order = order.filter { seen.insert($0).inserted }
+        for zone in Zone.allCases {
+            let current = windows[zone, default: []]
+            let members = Set(current)
+            let preferred = order.filter { members.contains($0) }
+            let preferredIDs = Set(preferred)
+            windows[zone] = preferred + current.filter { !preferredIDs.contains($0) }
+        }
+    }
+
     public func adjacent(in zone: Zone, offset: Int) -> UUID? {
         let list = windows[zone, default: []]
         guard !list.isEmpty else { return nil }

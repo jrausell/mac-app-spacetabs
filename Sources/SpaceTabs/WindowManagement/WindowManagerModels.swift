@@ -19,6 +19,7 @@ struct ScanResult: Sendable {
     let removed: Set<UUID>
     let focused: UUID?
     var notices: [String] = []
+    var visibleWindows: [WindowServerWindow] = []
 }
 
 struct DragCapture: Sendable {

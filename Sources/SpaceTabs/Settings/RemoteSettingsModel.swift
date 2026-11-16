@@ -6,6 +6,7 @@ import SpaceTabsCore
     private let model: AppModel
     private var connection: SettingsChannel?
     private var sendPacket: ((SettingsPacket) -> Void)?
+    var presentIfOpen: () -> Void = {}
     private(set) var state: SettingsState?
     init(model: AppModel) { self.model = model }
     init(model: AppModel, sendPacket: @escaping (SettingsPacket) -> Void) {
@@ -32,7 +33,13 @@ import SpaceTabsCore
         sendPacket?(SettingsPacket(kind: .subscribe))
     }
     func send(_ command: SettingsCommand) {
-        guard let data = try? JSONEncoder().encode(command), data.count <= SettingsProtocol.messageLimit else { return }
+        let encoded: Data?
+        if let workspaceID = model.workspaceID {
+            encoded = try? JSONEncoder().encode(SettingsCommandEnvelope(workspaceID: workspaceID, command: command))
+        } else {
+            encoded = try? JSONEncoder().encode(command)
+        }
+        guard let data = encoded, data.count <= SettingsProtocol.messageLimit else { return }
         sendPacket?(SettingsPacket(kind: .command, data: data))
     }
     func receive(_ packet: SettingsPacket) {
@@ -45,6 +52,7 @@ import SpaceTabsCore
             state.apply(to: model)
             model.remoteSettingsConnected = true
         case .show: model.openSettings()
+        case .presentIfOpen: presentIfOpen()
         case .close: NSApp.terminate(nil)
         default: break
         }

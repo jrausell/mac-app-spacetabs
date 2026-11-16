@@ -22,6 +22,23 @@ extension AppModel {
         return LayoutEngine.accessibilityFrame(from: rect, primaryDisplayTop: primary.frame.maxY)
     }
 
+    func placementIsCurrent(zone: Zone, target: CGRect, desktop: Int, interaction: Int, input: PlacementInputSnapshot)
+        -> Bool
+    {
+        !terminating && !managementSuspended && desktopRevision == desktop && presentationRevision == interaction
+            && NSEvent.pressedMouseButtons == 0 && !resizingColumns && !resizingRows
+            && PlacementInputSnapshot.capture() == input
+            && (try? targetFrame(zone)) == target
+    }
+
+    func needsPlacementSettlement(_ id: UUID, recovering: Bool) -> Bool {
+        if recovering { return true }
+        guard let window = windows.first(where: { $0.id == id }),
+            let launch = NSRunningApplication(processIdentifier: window.pid)?.launchDate
+        else { return false }
+        return (0...30).contains(Date.now.timeIntervalSince(launch))
+    }
+
     func safeRestoration(_ state: OriginalWindowState) -> OriginalWindowState {
         guard let primary = NSScreen.screens.first else { return state }
         let rect = LayoutEngine.appKitFrame(from: state.frame, primaryDisplayTop: primary.frame.maxY)

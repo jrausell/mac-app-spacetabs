@@ -16,7 +16,7 @@ extension AppModel {
         return orderedZones.compactMap { tabs.selected[$0] }
     }
 
-    func presentSelectedWindows(source: String) {
+    func presentSelectedWindows(source: String, completion: @escaping @MainActor () -> Void = {}) {
         workspacePresentationRequests += 1
         guard trusted, !managementSuspended, !terminating, !demo,
             activeZones.contains(where: { tabs.selected[$0] != nil })
@@ -25,6 +25,7 @@ extension AppModel {
                 L10n.tr(
                     "\(source): not run; access=\(trusted), paused=\(paused), quitting=\(terminating), selected=\(tabs.selected.count)"
                 )
+            if !terminating { completion() }
             return
         }
         noteUserInteraction()
@@ -50,6 +51,7 @@ extension AppModel {
             workspacePresentationStatus = L10n.tr("\(source): restoring \(selected.count) windows")
             busy = true
             switchingTabs = true
+            var presentationCancelled = false
             do {
                 try await restoreZoom()
                 let errors = try await WindowPresentationOperations(backend: windowManager).present(
@@ -77,6 +79,7 @@ extension AppModel {
                 workspacePresentationStatus = L10n.tr(
                     "\(source): finished; \(selected.count) selected, \(errors.count) errors")
             } catch is CancellationError {
+                presentationCancelled = true
                 workspacePresentationStatus = L10n.tr("\(source): cancelled")
             } catch {
                 if !(error is CancellationError) { DiagnosticLog.shared.failure(error, operation: #function) }
@@ -87,6 +90,13 @@ extension AppModel {
             busy = false
             layoutChanged()
             scheduleRefresh()
+            guard !presentationCancelled, !Task.isCancelled, presentationRevision == revision, !terminating else {
+                return
+            }
+            // The helper takes focus only after every selected external window has settled.
+            workspacePresentationRevision = nil
+            workspaceActivationPIDs = []
+            completion()
         } onComplete: { [weak self] in
             self?.restoreSavedSession(automatically: true)
             self?.applyApplicationAssignments()

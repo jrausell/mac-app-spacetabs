@@ -8,6 +8,7 @@ struct ProfilesSettingsView: View {
     @State private var name = ""
     @State private var deleteTarget: WorkspaceProfile?
     @State private var updateTarget: WorkspaceProfile?
+    @State private var renameTarget: WorkspaceProfile?
     var body: some View {
         let _ = localization.language
         ScrollView {
@@ -34,7 +35,7 @@ struct ProfilesSettingsView: View {
                     }
                     Text(
                         L10n.tr(
-                            "Saves the template, sizes, display, names, appearance, tabs, and app assignments. Choose below whether each profile opens closed assigned apps. Unlisted windows keep their current zone."
+                            "Saves this workspace’s layout and assignments. Opening a profile uses its own workspace; windows owned by another open workspace stay there."
                         )
                     )
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
@@ -55,7 +56,9 @@ struct ProfilesSettingsView: View {
                         VStack(alignment: .leading, spacing: 5) {
                             Text(profile.name).font(.headline)
                             Text(profile.layout.template.title).foregroundStyle(.secondary)
-                            if model.preferences.displayProfiles[model.displayConfigurationKey] == profile.id {
+                            if model.workspaceID == nil
+                                && model.preferences.displayProfiles[model.displayConfigurationKey] == profile.id
+                            {
                                 Label(L10n.tr("Automatic for these displays"), systemImage: "display.2").font(.caption)
                                     .foregroundStyle(.blue)
                             }
@@ -78,18 +81,24 @@ struct ProfilesSettingsView: View {
                                 ))
                         }
                         Spacer()
-                        Button(L10n.tr("Apply")) { model.applyProfile(profile.id) }
-                            .disabled(!model.canApplyProfile)
+                        Button(model.workspaceID == nil ? L10n.tr("Apply") : L10n.tr("Open profile here")) {
+                            model.applyProfile(profile.id)
+                        }
+                        .disabled(model.busy || model.terminating || model.configurationBlocked)
                         Menu {
-                            Button(
-                                model.preferences.displayProfiles[model.displayConfigurationKey] == profile.id
-                                    ? L10n.tr("Unlink from these displays")
-                                    : L10n.tr("Use automatically with these displays")
-                            ) {
-                                model.bindProfile(
-                                    profile.id,
-                                    enabled: model.preferences.displayProfiles[model.displayConfigurationKey]
-                                        != profile.id)
+                            Button(L10n.tr("Rename…")) { renameTarget = profile }
+                                .disabled(model.preferencesBlocked || model.busy || model.terminating)
+                            if model.workspaceID == nil {
+                                Button(
+                                    model.preferences.displayProfiles[model.displayConfigurationKey] == profile.id
+                                        ? L10n.tr("Unlink from these displays")
+                                        : L10n.tr("Use automatically with these displays")
+                                ) {
+                                    model.bindProfile(
+                                        profile.id,
+                                        enabled: model.preferences.displayProfiles[model.displayConfigurationKey]
+                                            != profile.id)
+                                }
                             }
                             Button(L10n.tr("Replace with Current Setup…")) { updateTarget = profile }
                             Button(L10n.tr("Delete…"), role: .destructive) { deleteTarget = profile }
@@ -102,6 +111,11 @@ struct ProfilesSettingsView: View {
                 Text(L10n.tr("Save up to \(PreferenceLimits.profiles) profiles locally on this Mac.")).font(.caption)
                     .foregroundStyle(.secondary)
             }.padding(24).frame(maxWidth: 850).frame(maxWidth: .infinity)
+        }
+        .sheet(item: $renameTarget) { profile in
+            RenameSetupSheet(title: L10n.tr("Rename Profile"), name: profile.name) {
+                model.renameProfile(profile.id, name: $0)
+            }
         }
         .confirmationDialog(
             L10n.tr("Delete this profile?"),

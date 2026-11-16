@@ -3,6 +3,7 @@ import SpaceTabsCore
 import SwiftUI
 
 enum SettingsSection: String, CaseIterable, Identifiable {
+    case howTo = "How To"
     case general = "General"
     case apps = "Apps"
     case design = "Design"
@@ -14,6 +15,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     var title: String { L10n.text(rawValue) }
     var icon: String {
         switch self {
+        case .howTo: "map"
         case .general: "slider.horizontal.3"
         case .apps: "app.badge"
         case .design: "rectangle.split.2x1"
@@ -25,6 +27,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     }
     var subtitle: String {
         switch self {
+        case .howTo: L10n.tr("Visual examples for monitors, desktops, workspaces, and profiles.")
         case .general: L10n.tr("Essential preferences for your desktop.")
         case .apps: L10n.tr("Choose which apps belong in each zone.")
         case .design: L10n.tr("Set the layout and appearance of your zones.")
@@ -40,13 +43,16 @@ struct ControlView: View {
     private let localization = AppLocalization.shared
     @Bindable var model: AppModel
     @State private var section: SettingsSection = .apps
+    @State private var handledGuideRequests: [UUID?: Int] = [:]
     private var status: String {
         model.demo
             ? L10n.tr("Demo")
             : !model.trusted
                 ? L10n.tr("Access needed")
-                : model.spaceTransitioning
-                    ? L10n.tr("Switching desktops") : model.paused ? L10n.tr("Paused") : L10n.tr("Active")
+                : !model.workspaceDesktopAvailable
+                    ? L10n.tr("Workspace closed or on another desktop")
+                    : model.spaceTransitioning
+                        ? L10n.tr("Switching desktops") : model.paused ? L10n.tr("Paused") : L10n.tr("Active")
     }
     var body: some View {
         let _ = localization.language
@@ -93,6 +99,10 @@ struct ControlView: View {
             }.frame(width: 190).background(.regularMaterial)
             Divider()
             VStack(spacing: 0) {
+                if model.workspaceID != nil {
+                    WorkspaceSettingsBar(model: model)
+                    Divider()
+                }
                 VStack(alignment: .leading, spacing: 5) {
                     Text(section.title).font(.system(size: 25, weight: .bold))
                     Text(section.subtitle).font(.callout).foregroundStyle(.secondary)
@@ -112,6 +122,7 @@ struct ControlView: View {
                 }
                 Group {
                     switch section {
+                    case .howTo: HowToSettingsView()
                     case .general: GeneralSettingsView(model: model)
                     case .apps: AppsSettingsView(model: model, showDebug: { section = .debug })
                     case .design: DesignSettingsView(model: model)
@@ -144,9 +155,19 @@ struct ControlView: View {
                         .regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                 }
             }
+            .onAppear { showRequestedGuide() }
+            .onChange(of: model.howToRequest) { showRequestedGuide() }
+            .onChange(of: model.workspaceID) { showRequestedGuide() }
             .onChange(of: model.assignmentRequest) {
                 section = .apps
                 model.settingsShowsApplications = true
             }
     }
+    private func showRequestedGuide() {
+        // Returning to a workspace must not replay its previous help request.
+        guard model.howToRequest > handledGuideRequests[model.workspaceID, default: 0] else { return }
+        handledGuideRequests[model.workspaceID] = model.howToRequest
+        section = .howTo
+    }
+
 }

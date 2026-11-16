@@ -13,7 +13,9 @@ struct AppsSettingsView: View {
         }
     }
     private var filtered: [WindowSnapshot] {
-        model.windows.filter { search.isEmpty || $0.label.localizedStandardContains(search) }
+        model.windows.filter {
+            model.eligibleWindow($0) && (search.isEmpty || $0.label.localizedStandardContains(search))
+        }
     }
     private var noticeCount: Int {
         model.warnings.count + model.shortcutWarnings.count + (model.message == nil ? 0 : 1)
@@ -35,7 +37,7 @@ struct AppsSettingsView: View {
             }
             HStack {
                 Text(
-                    L10n.tr("\(model.windows.count) windows found")
+                    L10n.tr("\(filtered.count) windows found")
                         + (model.pendingTabs.isEmpty ? "" : L10n.tr(" · \(model.pendingTabs.count) waiting to restore"))
                 )
                 .font(.caption).foregroundStyle(.secondary).lineLimit(1)

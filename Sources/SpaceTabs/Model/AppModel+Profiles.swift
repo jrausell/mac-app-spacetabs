@@ -3,25 +3,16 @@ import SpaceTabsCore
 
 extension AppModel {
     var canApplyProfile: Bool {
-        trusted && !configurationBlocked && !preferencesBlocked && !busy && !scanning && !resizingColumns
-            && !managementSuspended && !demo && !terminating
+        trusted && workspaceDesktopAvailable && !configurationBlocked && !preferencesBlocked && !busy && !scanning
+            && !resizingColumns
+            && !paused && !spaceTransitioning && displayProfileTask == nil && !demo && !terminating
     }
 
     func saveProfile(name: String, replacing id: UUID? = nil) {
         if sendToManager(.saveProfile(name, id)) { return }
         guard !busy, !resizingColumns, !preferencesBlocked, !configurationBlocked else { return }
         var value = preferences
-        let savedWindows = activeZones.flatMap { zone in
-            tabs.windows[zone, default: []].compactMap { id -> SavedTab? in
-                guard let window = windows.first(where: { $0.id == id }) else { return nil }
-                return SavedTab(id: id, identity: window.identity, zone: zone, selected: tabs.selected[zone] == id)
-            }
-        }
-        let layout = PersistedLayout(
-            ratio: ratio, screenID: screen.map { Self.stableDisplayID($0) } ?? selectedScreenID, tabs: savedWindows,
-            autoHideTabBars: autoHideTabBars, revealTabsAtTopEdge: revealTabsAtTopEdge,
-            applicationAssignments: applicationAssignments, tabAppearance: tabAppearance,
-            template: layoutTemplate, rowRatio: rowRatio)
+        let layout = profileLayout()
         let profile = WorkspaceProfile(
             id: id ?? UUID(), name: name.trimmingCharacters(in: .whitespacesAndNewlines), layout: layout,
             zoneNames: preferences.zoneNames,
@@ -31,8 +22,27 @@ extension AppModel {
         } else {
             value.profiles.append(profile)
         }
-        if commitPreferences(value) { message = L10n.tr("Profile “\(profile.name)” saved.") }
+        if commitPreferences(value) {
+            profileSaved?(profile.id)
+            message = L10n.tr("Profile “\(profile.name)” saved.")
+        }
     }
+    func renameProfile(_ id: UUID, name: String) {
+        if sendToManager(.renameProfile(id, name)) { return }
+        guard !preferencesBlocked, !busy, !resizingColumns, !terminating,
+            let index = preferences.profiles.firstIndex(where: { $0.id == id })
+        else { return }
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, name.count <= PreferenceLimits.profileNameCharacters else {
+            message = L10n.tr("Use a name between 1 and \(PreferenceLimits.profileNameCharacters) characters.")
+            return
+        }
+        var value = preferences
+        value.profiles[index].name = name
+        // Renaming must not replace the saved layout with the current workspace.
+        if commitPreferences(value) { message = L10n.tr("Profile renamed.") }
+    }
+
     func deleteProfile(_ id: UUID) {
         if sendToManager(.deleteProfile(id)) { return }
         var value = preferences
@@ -52,8 +62,13 @@ extension AppModel {
 
     func applyProfile(_ id: UUID, automatically: Bool = false) {
         if sendToManager(.applyProfile(id)) { return }
+        if let profileOpening {
+            if !automatically { profileOpening(id) }
+            return
+        }
         guard canApplyProfile, let profile = preferences.profiles.first(where: { $0.id == id })
         else { return }
+        cancelPendingReopens()
         profileLaunchTask?.cancel()
         reflowTask?.cancel()
         pendingAutomaticProfile = nil
@@ -64,8 +79,10 @@ extension AppModel {
             tabAppearance: tabAppearance, template: layoutTemplate, rowRatio: rowRatio)
         let oldPreferences = preferences
         let oldPending = pendingTabs
+        let oldOrder = savedTabOrder
         let oldTabs = tabs
         let oldOriginals = originals
+        let oldDisplaySelection = displaySelection
         let install: (PersistedLayout) -> Void = { layout in
             self.layoutTemplate = layout.template
             self.ratio = layout.ratio
@@ -79,10 +96,13 @@ extension AppModel {
             self.revealTabsAtTopEdge = layout.revealTabsAtTopEdge
             self.tabAppearance = layout.tabAppearance
             self.applicationAssignments = layout.applicationAssignments
+            self.updateDisplayAvailability()
         }
-        perform {
+        perform(allowUnavailableDisplay: true) {
             self.restoringTabZones = Set(profile.layout.template.zones)
             defer { self.restoringTabZones.removeAll() }
+            self.savedTabOrder = profile.layout.tabs.map(\.id)
+            self.displaySelection = DisplaySelectionTracker()
             install(profile.layout)
             let urls = Dictionary(
                 uniqueKeysWithValues: Set(self.windows.map(\.pid)).compactMap { pid in
@@ -124,7 +144,11 @@ extension AppModel {
             } catch {
                 if !(error is CancellationError) { DiagnosticLog.shared.failure(error, operation: #function) }
                 install(oldLayout)
+                self.selectedScreenID = oldLayout.screenID
+                self.displaySelection = oldDisplaySelection
+                self.updateDisplayAvailability()
                 self.pendingTabs = oldPending
+                self.savedTabOrder = oldOrder
                 self.tabs = oldTabs
                 self.originals = oldOriginals
                 if let failure = error as? WindowError {

@@ -18,6 +18,99 @@ struct TabBarView: View {
         return NSRunningApplication(processIdentifier: snapshot.pid)?.icon
     }
 
+    private func liveTab(_ id: UUID) -> some View {
+        WindowTabButton(
+            windowID: id, title: model.titles[id] ?? L10n.tr("Window"), icon: icon(for: id),
+            foreground: NSColor(Color(tabColor: palette.foreground)),
+            dragVisibility: model.tabDragVisibility
+        ) { clickCount in
+            model.select(id, zone: zone, fillZone: clickCount == 2)
+        }
+        .padding(.vertical, 1)
+        .background(
+            model.tabs.selected[zone] == id
+                ? accent.opacity(0.25) : Color(tabColor: palette.foreground).opacity(0.09),
+            in: RoundedRectangle(cornerRadius: 7)
+        )
+        .disabled(model.paused)
+        .help(
+            L10n.tr(
+                "\(model.titles[id] ?? L10n.tr("Window")) · Double-click to fill its zone · Drag to move"
+            )
+        )
+        .onDrop(of: [spaceTabsPasteboard.rawValue], isTargeted: nil) { providers in
+            TabDropReceiver.accept(providers, model: model, zone: zone, before: id)
+        }
+        .contextMenu {
+            ForEach(model.activeZones.filter { $0 != zone }) { destination in
+                Button(L10n.tr("Move to Zone \(destination.title)")) { model.move(id, to: destination) }
+                    .disabled(model.busy || model.scanning)
+            }
+            Divider()
+            Button(L10n.tr("Release Window")) { model.release(id) }.disabled(
+                model.busy || model.scanning)
+        }
+    }
+
+    private func pendingTab(_ saved: SavedTab) -> some View {
+        Button {
+            model.reopenPendingTab(saved.id)
+        } label: {
+            HStack(spacing: 5) {
+                Image(
+                    systemName: model.reopeningPendingTabs.contains(saved.id)
+                        ? "hourglass" : "arrow.clockwise")
+                Text(model.pendingAppName(saved))
+                    .lineLimit(1)
+                Text(L10n.tr("Pending")).foregroundStyle(.secondary)
+            }
+            .font(.system(size: 11)).padding(.horizontal, 10).padding(.vertical, 7).frame(maxWidth: 230)
+            .background(accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 7))
+        }
+        .buttonStyle(.plain)
+        .help(
+            L10n.tr(
+                "Synchronize this saved app with an open window, or open the app if it has no windows. If several windows are available, choose one."
+            )
+        )
+        .disabled(
+            model.paused || model.busy || model.scanning
+                || model.reopeningPendingTabs.contains(saved.id)
+        )
+        .contextMenu {
+            Button(L10n.tr("Synchronize Saved App")) { model.reopenPendingTab(saved.id) }
+            Button(L10n.tr("Forget Saved Windows for This App in This Zone"), role: .destructive) {
+                model.forgetPendingApp(saved.identity.bundleID, in: zone)
+            }
+        }
+        .popover(
+            isPresented: Binding(
+                get: { model.pendingWindowChoices[saved.id] != nil || model.pendingWindowMessages[saved.id] != nil },
+                set: { if !$0 { model.dismissPendingWindowChoice(saved.id) } }
+            )
+        ) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(
+                    model.pendingWindowMessages[saved.id] == nil
+                        ? L10n.tr("Choose a window for \(model.pendingAppName(saved))") : model.pendingAppName(saved)
+                ).font(.headline)
+                if let message = model.pendingWindowMessages[saved.id] {
+                    Text(message).fixedSize(horizontal: false, vertical: true)
+                }
+                ForEach(model.pendingWindowChoices[saved.id, default: []], id: \.self) { id in
+                    if let window = model.windows.first(where: { $0.id == id }) {
+                        Button {
+                            model.synchronizePendingWindow(saved.id, with: id)
+                        } label: {
+                            Text(window.label).lineLimit(2).frame(maxWidth: .infinity, alignment: .leading)
+                        }.buttonStyle(.bordered)
+                    }
+                }
+                Button(L10n.tr("Cancel")) { model.dismissPendingWindowChoice(saved.id) }
+            }.padding(16).frame(width: 360)
+        }
+    }
+
     var body: some View {
         let _ = localization.language
         HStack(spacing: 5) {
@@ -34,37 +127,13 @@ struct TabBarView: View {
                             Text(L10n.tr("Loading tabs…")).font(.system(size: 11))
                         }.padding(.horizontal, 8).accessibilityElement(children: .combine)
                     }
-                    ForEach(model.tabs.windows[zone, default: []], id: \.self) { id in
-                        WindowTabButton(
-                            windowID: id, title: model.titles[id] ?? L10n.tr("Window"), icon: icon(for: id),
-                            foreground: NSColor(Color(tabColor: palette.foreground)),
-                            dragVisibility: model.tabDragVisibility
-                        ) { clickCount in
-                            model.select(id, zone: zone, fillZone: clickCount == 2)
-                        }
-                        .padding(.vertical, 1)
-                        .background(
-                            model.tabs.selected[zone] == id
-                                ? accent.opacity(0.25) : Color(tabColor: palette.foreground).opacity(0.09),
-                            in: RoundedRectangle(cornerRadius: 7)
-                        )
-                        .disabled(model.paused)
-                        .help(
-                            L10n.tr(
-                                "\(model.titles[id] ?? L10n.tr("Window")) · Double-click to fill its zone · Drag to move"
-                            )
-                        )
-                        .onDrop(of: [spaceTabsPasteboard.rawValue], isTargeted: nil) { providers in
-                            TabDropReceiver.accept(providers, model: model, zone: zone, before: id)
-                        }
-                        .contextMenu {
-                            ForEach(model.activeZones.filter { $0 != zone }) { destination in
-                                Button(L10n.tr("Move to Zone \(destination.title)")) { model.move(id, to: destination) }
-                                    .disabled(model.busy || model.scanning)
-                            }
-                            Divider()
-                            Button(L10n.tr("Release Window")) { model.release(id) }.disabled(
-                                model.busy || model.scanning)
+                    ForEach(model.displayedTabIDs(in: zone), id: \.self) { id in
+                        if let saved = model.pendingTabs.first(where: { $0.id == id && $0.zone == zone }),
+                            model.tabs.zone(of: id) == nil
+                        {
+                            pendingTab(saved)
+                        } else {
+                            liveTab(id)
                         }
                     }
                     ForEach(model.isLoadingTabs(in: zone) ? [] : model.pendingApplicationAssignments(in: zone)) {
@@ -95,6 +164,7 @@ struct TabBarView: View {
                     }
                     if model.tabs.windows[zone, default: []].isEmpty
                         && model.pendingApplicationAssignments(in: zone).isEmpty
+                        && model.visiblePendingTabs(in: zone).isEmpty
                         && !model.isLoadingTabs(in: zone)
                     {
                         Text(

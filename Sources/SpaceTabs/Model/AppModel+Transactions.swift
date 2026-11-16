@@ -3,17 +3,26 @@ import SpaceTabsCore
 
 extension AppModel {
     func perform(
-        allowPaused: Bool = false, duringDiscovery: Bool = false,
+        allowPaused: Bool = false, duringDiscovery: Bool = false, allowUnavailableDisplay: Bool = false,
         file: String = #fileID, function: String = #function, line: Int = #line,
         _ work: @escaping @MainActor () async throws -> Void
     ) {
         guard !terminating else { return }
+        guard workspaceDesktopAvailable else {
+            message = L10n.tr("Switch to this workspace’s desktop before arranging its windows.")
+            return
+        }
         guard !busy, !scanning || duringDiscovery else {
             message = L10n.tr("Wait for the current operation to finish.")
             return
         }
         guard !spaceTransitioning else {
             message = L10n.tr("Wait for the desktop transition to finish.")
+            return
+        }
+        guard !displayUnavailable || allowPaused || allowUnavailableDisplay else {
+            message = L10n.tr(
+                "The selected display is unavailable. Waiting for it to reconnect, or choose another display.")
             return
         }
         guard allowPaused || !paused else {

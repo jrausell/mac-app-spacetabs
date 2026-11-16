@@ -16,6 +16,8 @@ The source code is licensed under [GNU GPLv3](../LICENSE). Public binary release
 
 ## Engineering priorities
 
+The proposed [persistent workspace profiles plan](WORKSPACE_PROFILES_PLAN.md) covers independent monitor workspaces, durable assignments, Show/Restore actions, portrait layouts, and a native macOS desktop feasibility gate. It is Community work in progress: workspace isolation and explicit per-desktop opening are implemented in source, with integrated native desktop acceptance still pending; portrait templates and the remaining recovery work are not complete.
+
 1. Verify gesture delivery, focus, sleep/wake, display changes, and recovery with real apps.
 2. Measure AX wait time and click-to-focus latency before making performance claims.
 3. Keep discovery limited and event-driven while isolating slow apps.

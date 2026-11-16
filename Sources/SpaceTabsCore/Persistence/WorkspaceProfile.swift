@@ -65,6 +65,7 @@ extension WorkspaceProfile {
         for saved in layout.tabs where saved.selected {
             if let id = matches[saved.id] { next.select(id, in: saved.zone) }
         }
+        next.restoreOrder(layout.tabs.compactMap { matches[$0.id] })
         return ProfileResolution(tabs: next, matches: matches, pending: layout.tabs.filter { matches[$0.id] == nil })
     }
 }

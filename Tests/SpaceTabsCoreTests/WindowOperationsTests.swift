@@ -114,6 +114,9 @@ private actor TestWindows: WindowLayoutAccess, WindowPresentationAccess {
         }
     }
     func state(_ id: UUID) -> OriginalWindowState { states[id]! }
+    func simulateAppFrameRestore(_ id: UUID, frame: CGRect) {
+        states[id] = OriginalWindowState(frame: frame, minimized: states[id]!.minimized)
+    }
     func reads(_ id: UUID) -> Int { frameReads[id, default: 0] }
     func writes(_ id: UUID) -> Int { frameWrites[id, default: 0] }
     func minimizations(_ id: UUID) -> [Bool] { minimizeWrites[id, default: []] }
@@ -125,6 +128,78 @@ private func original(_ minimized: Bool = false) -> OriginalWindowState {
 private let destination = CGRect(x: 8, y: 74, width: 450, height: 800)
 private func engine(_ backend: TestWindows) -> WindowOperations<TestWindows> {
     WindowOperations(backend: backend, wait: { _ in })
+}
+
+@Test func startupPlacementCorrectsLateFullHeightRestorationAndReservesFixedTabBars() async throws {
+    let id = UUID()
+    let other = UUID()
+    let desktop = CGRect(x: 0, y: 0, width: 2560, height: 1440)
+    let geometry = LayoutEngine().desktopGeometry(
+        visibleFrame: desktop, screenFrame: desktop, menuBarHeight: 0, ratio: 0.25, reserveHeader: true)
+    let content = try #require(geometry[.b]?.content)
+    let target = LayoutEngine.accessibilityFrame(from: content, primaryDisplayTop: 1440)
+    let fullHeight = CGRect(x: target.minX, y: 0, width: target.width, height: 1440)
+    let before = OriginalWindowState(frame: fullHeight, minimized: false)
+    let backend = TestWindows([id: before, other: original()])
+    let operation = WindowOperations(
+        backend: backend,
+        wait: { delay in
+            if delay == .milliseconds(300) { await backend.simulateAppFrameRestore(id, frame: fullHeight) }
+        })
+    try await operation.execute([.place(id, target)], settling: [id])
+    #expect(target.minY == 46 && target.height == 1394)
+    #expect(await backend.state(id).frame == target)
+    #expect(await backend.writes(id) == 2)
+    #expect(await backend.writes(other) == 0)
+    #expect(await backend.reads(other) == 0)
+    #expect(await backend.state(other) == original())
+}
+
+@Test func staleStartupPlacementLeavesNewManualGeometryUntouched() async throws {
+    let id = UUID()
+    let manual = CGRect(x: 70, y: 100, width: 650, height: 500)
+    let backend = TestWindows([id: original()])
+    let operation = WindowOperations(
+        backend: backend,
+        wait: { _ in
+            await backend.simulateAppFrameRestore(id, frame: manual)
+        })
+    try await operation.execute([.place(id, destination)], settling: [id], isCurrent: { false })
+    #expect(await backend.state(id).frame == manual)
+    #expect(await backend.writes(id) == 1)
+}
+
+@Test func startupCorrectionFailureRollsBackToTheOriginalFrame() async {
+    let id = UUID()
+    let before = original()
+    let backend = TestWindows([id: before])
+    let operation = WindowOperations(
+        backend: backend,
+        wait: { delay in
+            if delay == .milliseconds(300) {
+                await backend.simulateAppFrameRestore(id, frame: before.frame)
+                await backend.configure(reject: destination)
+            }
+        })
+    do {
+        try await operation.execute([.place(id, destination)], settling: [id])
+        Issue.record("Expected the startup correction to be rejected.")
+    } catch let error as WindowOperationError {
+        #expect(error.windowID == id && error.recoveryStates.isEmpty)
+    } catch { Issue.record("Unexpected error: \(error)") }
+    #expect(await backend.state(id) == before)
+}
+
+@Test func normalPlacementDoesNotRunStartupSettlementChecks() async throws {
+    let id = UUID()
+    let backend = TestWindows([id: original()])
+    let operation = WindowOperations(
+        backend: backend,
+        wait: { _ in
+            Issue.record("A normal immediately accepted placement must not wait for startup checks.")
+        })
+    try await operation.execute([.place(id, destination)])
+    #expect(await backend.writes(id) == 1)
 }
 
 @Test func geometryMayBeTemporarilyUnavailableAfterSuccessfulWrite() async throws {

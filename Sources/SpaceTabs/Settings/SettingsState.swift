@@ -3,6 +3,13 @@ import Foundation
 import SpaceTabsCore
 
 struct SettingsState: Codable, Equatable, Sendable {
+    let howToRequest: Int
+    let workspaceID: UUID?
+    let workspaceName: String
+    let desktopMenuCloudManaged: Bool?
+    let workspaceDesktopAvailable: Bool
+    let workspaceSummaries: [WorkspaceSummary]
+    let eligibleWindowIDs: Set<UUID>
     let preferencesBlocked: Bool
     let preferences: UserPreferences
     let loginEnabled: Bool
@@ -21,6 +28,7 @@ struct SettingsState: Codable, Equatable, Sendable {
     let tabs: TabManager
     let demo: Bool
     let paused: Bool
+    let displayUnavailable: Bool
     let spaceTransitioning: Bool
     let spaceChangeCount: Int
     let lastSpaceChange: String
@@ -48,6 +56,10 @@ struct SettingsState: Codable, Equatable, Sendable {
     let activeZone: Zone
     let originals: [UUID: OriginalWindowState]
     let pendingTabs: [SavedTab]
+    let savedTabOrder: [UUID]
+    let reopeningPendingTabs: Set<UUID>
+    let pendingWindowChoices: [UUID: [UUID]]
+    let pendingWindowMessages: [UUID: String]
     let configurationBlocked: Bool
     let terminating: Bool
     let assignmentZone: Zone?
@@ -56,6 +68,13 @@ struct SettingsState: Codable, Equatable, Sendable {
     let workspacePresentationRequests: Int
     let workspacePresentationStatus: String
     @MainActor init(_ model: AppModel) {
+        howToRequest = model.howToRequest
+        workspaceID = model.workspaceID
+        workspaceName = model.workspaceName
+        desktopMenuCloudManaged = model.desktopMenuCloudManaged
+        workspaceDesktopAvailable = model.workspaceDesktopAvailable
+        workspaceSummaries = model.workspaceSummaries
+        eligibleWindowIDs = Set(model.windows.filter(model.eligibleWindow).map(\.id))
         preferencesBlocked = model.preferencesBlocked
         preferences = model.preferences
         loginEnabled = model.loginEnabled
@@ -74,6 +93,7 @@ struct SettingsState: Codable, Equatable, Sendable {
         tabs = model.tabs
         demo = model.demo
         paused = model.paused
+        displayUnavailable = model.displayUnavailable
         spaceTransitioning = model.spaceTransitioning
         spaceChangeCount = model.spaceChangeCount
         lastSpaceChange = model.lastSpaceChange
@@ -101,6 +121,10 @@ struct SettingsState: Codable, Equatable, Sendable {
         activeZone = model.activeZone
         originals = model.originals
         pendingTabs = model.pendingTabs
+        savedTabOrder = model.savedTabOrder
+        reopeningPendingTabs = model.reopeningPendingTabs
+        pendingWindowChoices = model.pendingWindowChoices
+        pendingWindowMessages = model.pendingWindowMessages
         configurationBlocked = model.configurationBlocked
         terminating = model.terminating
         assignmentZone = model.assignmentZone
@@ -110,6 +134,13 @@ struct SettingsState: Codable, Equatable, Sendable {
         workspacePresentationStatus = model.workspacePresentationStatus
     }
     @MainActor func apply(to model: AppModel) {
+        model.howToRequest = howToRequest
+        model.workspaceID = workspaceID
+        model.workspaceName = workspaceName
+        model.desktopMenuCloudManaged = desktopMenuCloudManaged
+        model.workspaceDesktopAvailable = workspaceDesktopAvailable
+        model.workspaceSummaries = workspaceSummaries
+        model.windowIsEligible = { eligibleWindowIDs.contains($0.id) }
         model.preferencesBlocked = preferencesBlocked
         if model.preferences != preferences { model.preferences = preferences }
         model.loginEnabled = loginEnabled
@@ -130,6 +161,7 @@ struct SettingsState: Codable, Equatable, Sendable {
         if model.tabs != tabs { model.tabs = tabs }
         if model.demo != demo { model.demo = demo }
         if model.paused != paused { model.paused = paused }
+        if model.displayUnavailable != displayUnavailable { model.displayUnavailable = displayUnavailable }
         if model.spaceTransitioning != spaceTransitioning { model.spaceTransitioning = spaceTransitioning }
         if model.spaceChangeCount != spaceChangeCount { model.spaceChangeCount = spaceChangeCount }
         if model.lastSpaceChange != lastSpaceChange { model.lastSpaceChange = lastSpaceChange }
@@ -160,6 +192,10 @@ struct SettingsState: Codable, Equatable, Sendable {
         if model.activeZone != activeZone { model.activeZone = activeZone }
         if model.originals != originals { model.originals = originals }
         if model.pendingTabs != pendingTabs { model.pendingTabs = pendingTabs }
+        if model.savedTabOrder != savedTabOrder { model.savedTabOrder = savedTabOrder }
+        if model.reopeningPendingTabs != reopeningPendingTabs { model.reopeningPendingTabs = reopeningPendingTabs }
+        if model.pendingWindowChoices != pendingWindowChoices { model.pendingWindowChoices = pendingWindowChoices }
+        if model.pendingWindowMessages != pendingWindowMessages { model.pendingWindowMessages = pendingWindowMessages }
         if model.configurationBlocked != configurationBlocked { model.configurationBlocked = configurationBlocked }
         if model.terminating != terminating { model.terminating = terminating }
         if model.assignmentZone != assignmentZone { model.assignmentZone = assignmentZone }

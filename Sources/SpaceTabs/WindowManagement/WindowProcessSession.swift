@@ -245,16 +245,23 @@ actor WindowProcessSession: WindowAccess, WindowPresentationAccess {
         // Movement was confirmed before showing targets. Native edge tiling
         // may resize a dragged window on mouse-up; that is still a valid drop.
         if let reason = incompatibility(candidate.element) { throw WindowError(message: reason) }
-        let id =
+        let exactID =
             entries.first { $0.value.pid == candidate.pid && CFEqual($0.value.element, candidate.element) }?.key
-            ?? UUID()
+        let number =
+            exactID.flatMap { entries[$0]?.snapshot.windowNumber }
+            ?? WindowServerWindow.number(for: state.frame, pid: candidate.pid, in: WindowServerCatalog.read())
+        let candidatePID = candidate.pid
+        let cachedSnapshots = entries.values.map(\.snapshot)
+        let id =
+            exactID ?? WindowServerWindow.existingID(
+                for: number, pid: candidatePID, snapshots: cachedSnapshots) ?? UUID()
         let snapshot = WindowSnapshot(
             id: id, pid: candidate.pid, appName: app.localizedName ?? L10n.tr("App"),
             identity: WindowIdentity(
                 bundleID: bundleID, title: string(candidate.element, kAXTitleAttribute) ?? "",
                 document: string(candidate.element, kAXDocumentAttribute)), state: state,
-            windowNumber: entries[id]?.snapshot.windowNumber
-                ?? WindowServerWindow.number(for: state.frame, pid: candidate.pid, in: WindowServerCatalog.read()))
+            windowNumber: number)
+        prepareReplacement(element: candidate.element, id: id)
         entries[id] = Entry(element: candidate.element, pid: candidate.pid, snapshot: snapshot)
         let root = AXUIElementCreateApplication(candidate.pid)
         AXUIElementSetMessagingTimeout(root, 0.2)
@@ -375,6 +382,17 @@ actor WindowProcessSession: WindowAccess, WindowPresentationAccess {
         guard error == .success else { throw WindowError(message: describe(error)) }
     }
 
+    private func prepareReplacement(element: AXUIElement, id: UUID) {
+        guard let old = entries[id], !CFEqual(old.element, element) else { return }
+        if let observer = observers[old.pid] {
+            for name in windowNotifications[id, default: []] {
+                AXObserverRemoveNotification(observer, old.element, name as CFString)
+            }
+        }
+        windowNotifications[id] = nil
+        notificationRetry.reset(prefix: "\(old.pid):window:\(id):")
+    }
+
     private func element(for id: UUID) throws -> AXUIElement {
         guard AXIsProcessTrusted() else {
             throw WindowError(
@@ -436,6 +454,8 @@ actor WindowProcessSession: WindowAccess, WindowPresentationAccess {
             discoveryRetry.succeeded(retryKey)
             discoveryWarnings[app.pid] = nil
             observeApplication(root, pid: app.pid)
+            let focused = value(root, kAXFocusedWindowAttribute as CFString)
+            var seenNumbers = Set<UInt32>()
             let deadline = ProcessInfo.processInfo.systemUptime + 1.0
             for element in list {
                 if Task.isCancelled || ProcessInfo.processInfo.systemUptime >= deadline {
@@ -469,7 +489,17 @@ actor WindowProcessSession: WindowAccess, WindowPresentationAccess {
                     warnings.append("\(app.name): \(error.localizedDescription)")
                     continue
                 }
-                let id = existing ?? UUID()
+                let number =
+                    existing.flatMap { entries[$0]?.snapshot.windowNumber }
+                    ?? WindowServerWindow.number(for: state.frame, pid: app.pid, in: serverWindows)
+                if let number, !seenNumbers.insert(number).inserted {
+                    guard let focused, CFGetTypeID(focused) == AXUIElementGetTypeID(), CFEqual(element, focused) else {
+                        continue
+                    }
+                }
+                let id =
+                    existing ?? WindowServerWindow.existingID(
+                        for: number, pid: app.pid, snapshots: entries.values.map(\.snapshot)) ?? UUID()
                 let reason = incompatibility(element)
                 let identity = WindowIdentity(
                     bundleID: app.bundleID, title: string(element, kAXTitleAttribute) ?? "",
@@ -477,8 +507,8 @@ actor WindowProcessSession: WindowAccess, WindowPresentationAccess {
                 let snapshot = WindowSnapshot(
                     id: id, pid: app.pid, appName: app.name, identity: identity,
                     state: state, incompatibility: reason,
-                    windowNumber: entries[id]?.snapshot.windowNumber
-                        ?? WindowServerWindow.number(for: state.frame, pid: app.pid, in: serverWindows))
+                    windowNumber: number)
+                prepareReplacement(element: element, id: id)
                 entries[id] = Entry(element: element, pid: app.pid, snapshot: snapshot)
                 found.insert(id)
                 observeWindow(element, pid: app.pid, id: id)

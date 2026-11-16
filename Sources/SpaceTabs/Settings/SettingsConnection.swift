@@ -1,12 +1,14 @@
 import AppKit
 import Darwin
+import FinderSync
 import Foundation
 import Observation
 import SpaceTabsCore
 
 @MainActor final class SettingsHost {
     static let helperID = SpaceTabsIdentity.settingsBundleID
-    private let model: AppModel
+    private var model: AppModel
+    private var observationGeneration = 0
     private var server: SettingsSocketServer?
     private var connection: SettingsChannel?
     private var helper: NSRunningApplication?
@@ -17,6 +19,21 @@ import SpaceTabsCore
     private var stopped = false
     private var helperURL: URL { Bundle.main.bundleURL.appendingPathComponent(SpaceTabsIdentity.settingsBundlePath) }
     init(model: AppModel) { self.model = model }
+    func useModel(_ model: AppModel) {
+        guard self.model !== model else { return }
+        self.model = model
+        observationGeneration += 1
+        lastState = nil
+        if observing { observeState() }
+    }
+    /// Only the connected helper can decide whether its window is still open.
+    /// This request never launches a helper or reopens a closed window.
+    func presentIfOpen() {
+        guard !stopped, !model.terminating, let connection else { return }
+        if let helper, !helper.isTerminated { NSApp.yieldActivation(to: helper) }
+        connection.send(SettingsPacket(kind: .presentIfOpen))
+    }
+
     func show() {
         guard !stopped, !model.terminating else { return }
         if let helper, !helper.isTerminated {
@@ -126,10 +143,14 @@ import SpaceTabsCore
             observing = false
             return
         }
+        let generation = observationGeneration
         let state = withObservationTracking {
             SettingsState(model)
         } onChange: { [weak self] in
-            Task { @MainActor in self?.observeState() }
+            Task { @MainActor in
+                guard let self, generation == self.observationGeneration else { return }
+                self.observeState()
+            }
         }
         push(state)
     }
@@ -144,13 +165,30 @@ import SpaceTabsCore
         connection?.send(SettingsPacket(kind: .state, data: data))
     }
     func receive(_ data: Data) {
-        guard data.count <= SettingsProtocol.messageLimit,
-            let command = try? JSONDecoder().decode(SettingsCommand.self, from: data)
-        else { return }
+        guard data.count <= SettingsProtocol.messageLimit else { return }
+        let command: SettingsCommand
+        if let workspaceID = model.workspaceID {
+            guard let envelope = try? JSONDecoder().decode(SettingsCommandEnvelope.self, from: data),
+                envelope.workspaceID == workspaceID
+            else { return }
+            command = envelope.command
+        } else {
+            guard let decoded = try? JSONDecoder().decode(SettingsCommand.self, from: data) else { return }
+            command = decoded
+        }
         DiagnosticLog.shared.record(
             "settings.command", details: ["command": String(String(describing: command).prefix { $0 != "(" })])
         model.noteUserInteraction()
         switch command {
+        case .openHowTo:
+            model.howToRequest += 1
+            model.openSettings()
+        case .renameWorkspace(let id, _):
+            guard id == model.workspaceID else { return }
+            model.workspaceCommand?(command)
+        case .selectWorkspace, .newWorkspace, .openWorkspaceHere, .closeWorkspace, .restoreWorkspace,
+            .showWorkspace:
+            model.workspaceCommand?(command)
         case .bindProfile(let id, let enabled): model.bindProfile(id, enabled: enabled)
         case .zoom: model.toggleZoom()
         case .openSwitcher: model.showQuickSwitcher()
@@ -162,10 +200,12 @@ import SpaceTabsCore
         case .resetBindings: model.resetShortcutBindings()
         case .zoneName(let zone, let name): model.setZoneName(zone, name: name)
         case .saveProfile(let name, let id): model.saveProfile(name: name, replacing: id)
+        case .renameProfile(let id, let name): model.renameProfile(id, name: name)
         case .applyProfile(let id): model.applyProfile(id)
         case .profileOpenApps(let id, let enabled): model.setProfileOpenAssignedApps(id, enabled: enabled)
         case .deleteProfile(let id): model.deleteProfile(id)
         case .login(let enabled): model.setLoginEnabled(enabled)
+        case .finderExtensionSettings: FIFinderSyncController.showExtensionManagementInterface()
         case .loginSettings: model.openLoginSettings()
         case .loginStatus: model.refreshLoginStatus()
         case .showTabs: model.showTabBars()
@@ -180,12 +220,17 @@ import SpaceTabsCore
         case .template(let template): model.changeTemplate(template)
         case .layout(let preferences):
             guard preferences.isValid,
+                model.workspaceID == nil || preferences.screenID == model.selectedScreenID,
                 preferences.screenID.isEmpty
                     || NSScreen.screens.contains(where: { AppModel.screenID($0) == preferences.screenID })
             else { return }
             model.ratio = preferences.ratio
             model.rowRatio = preferences.rowRatio
+            if preferences.screenID != model.selectedScreenID || model.displayUnavailable {
+                model.displaySelection = DisplaySelectionTracker()
+            }
             model.selectedScreenID = preferences.screenID
+            model.updateDisplayAvailability()
             model.autoHideTabBars = preferences.autoHide
             model.revealTabsAtTopEdge = preferences.revealAtTop
             model.layoutPreferenceChanged()
@@ -205,6 +250,11 @@ import SpaceTabsCore
             }
         case .restore: model.restoreSavedSession()
         case .forget: model.forgetPending()
+        case .reopenPendingTab(let id): model.reopenPendingTab(id)
+        case .synchronizePendingWindow(let saved, let window): model.synchronizePendingWindow(saved, with: window)
+        case .dismissPendingWindowChoice(let id): model.dismissPendingWindowChoice(id)
+        case .forgetPendingTab(let id): model.forgetPendingTab(id)
+        case .forgetPendingApp(let bundleID, let zone): model.forgetPendingApp(bundleID, in: zone)
         case .demo: model.demo ? model.stopDemo() : model.startDemo()
         case .reset: model.resetConfiguration()
         case .reapply: model.reapplyLayout()

@@ -52,6 +52,17 @@ cp "$binary_dir/SpaceTabs" "$helper_app/Contents/MacOS/SpaceTabs"
 cp -R "$resource_bundle" "$helper_app/Contents/Resources/"
 cp Resources/Settings-Info.plist "$helper_app/Contents/Info.plist"
 cp .build/icons/SpaceTabsSettings.icns "$helper_app/Contents/Resources/SpaceTabsSettings.icns"
+finder_app="$staged_app/Contents/PlugIns/SpaceTabs Desktop Menu.appex"
+mkdir -p "$finder_app/Contents/MacOS" "$finder_app/Contents/Resources"
+cp "$binary_dir/SpaceTabsFinder" "$finder_app/Contents/MacOS/SpaceTabsFinder"
+cp Resources/Finder-Info.plist "$finder_app/Contents/Info.plist"
+cp -R "$resource_bundle" "$finder_app/Contents/Resources/"
+finder_bundle_id="$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' Resources/Finder-Info.plist)"
+if ! /usr/bin/codesign --force --sign "$signing_identity" --identifier "$finder_bundle_id" --entitlements Resources/Finder.entitlements "$finder_app"; then
+    print -u2 'Could not sign SpaceTabs Desktop Menu. dist/SpaceTabs.app still contains the previous version.'
+    exit 1
+fi
+/usr/bin/codesign --verify --strict "$finder_app"
 if ! /usr/bin/codesign --force --sign "$signing_identity" --identifier "$helper_bundle_id" "$helper_app"; then
     print -u2 'Could not sign SpaceTabs Settings. Run Scripts/build-app.sh release in your Terminal.'
     print -u2 'dist/SpaceTabs.app still contains the previous version.'

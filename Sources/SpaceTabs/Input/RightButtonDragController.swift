@@ -6,6 +6,7 @@ import SwiftUI
 /// callback. Event coordinates come directly from Quartz, never NSEvent cache.
 @MainActor final class RightButtonDragController {
     private weak var model: AppModel?
+    var modelAtPoint: ((CGPoint) -> AppModel?)?
     private var tap: CFMachPort?
     private var source: CFRunLoopSource?
     private var state = RightDragState()
@@ -98,6 +99,7 @@ import SwiftUI
         }
         switch type {
         case .rightMouseDown:
+            if let modelAtPoint { model = modelAtPoint(event.unflippedLocation) }
             rawDownCount += 1
             lastFlags = event.flags.rawValue
             if state.tracking {
